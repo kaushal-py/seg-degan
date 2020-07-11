@@ -1,6 +1,10 @@
+import os
+from tqdm import tqdm
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import torchvision.transforms as transforms
 
@@ -54,40 +58,53 @@ class SegmentationSystem:
             self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, self.hparams.scheduler_step, self.hparams.scheduler_gamma)
 
 
+        if os.path.exists(self.config.log_dir):
+            raise Exception("Log directory exists")
+        self.logger = SummaryWriter(log_dir=self.config.log_dir)
+
+
     def train_step(self, batch, batch_idx):
 
         data, target = batch
-        print(data.shape, target.shape)
         self.optimizer.zero_grad()
         logits = self.model(data)
         loss = utils.focal_loss(logits, target, gamma=2, ignore_index=255)
         self.train_loss += loss.item()
         loss.backward()
         self.optimizer.step()
+        self.train_metrics.update(logits.max(1)[1].detach().cpu().numpy().astype('uint8'), target.detach().cpu().numpy().astype('uint8'))
 
     def test_step(self, batch, batch_idx):
 
         data, target = batch
-        print(data.shape, target.shape)
         logits = self.model(data)
         loss = utils.focal_loss(logits, target, gamma=2, ignore_index=255)
         self.test_loss += loss.item()
+        self.test_metrics.update(logits.max(1)[1].detach().cpu().numpy().astype('uint8'), target.detach().cpu().numpy().astype('uint8'))
 
     def train_epoch(self, epoch_id):
         self.model.train()
         self.train_loss = 0
-        for batch_idx, batch in enumerate(self.train_loader):
+        self.train_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=11)
+        for batch_idx, batch in enumerate(tqdm(self.train_loader, leave=False, unit='batch', ascii=True)):
             data, target = batch
             data, target = data.to(self.device), target.to(self.device)
             target = target.long()
             batch = (data, target)
             self.train_step(batch, batch_idx)
         self.scheduler.step()
+        print("Epoch: {}".format(epoch_id))
         print("Avg Train Loss {}".format(self.train_loss/batch_idx))
+        result = self.train_metrics.get_results()
+        print("Pix Acc {}, mIoU {}".format(result['Overall Acc'], result['Mean IoU']))
+        self.logger.add_scalar('Loss/Train', self.train_loss/batch_idx, epoch_id)
+        self.logger.add_scalar('Accuracy/Train', result['Overall Acc'], epoch_id)
+        self.logger.add_scalar('mIoU/Train', result['Mean IoU'], epoch_id)
 
     def test_epoch(self, epoch_id):
         self.model.eval()
         self.test_loss = 0
+        self.test_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=11)
         for batch_idx, batch in enumerate(self.test_loader):
             data, target = batch
             data, target = data.to(self.device), target.to(self.device)
@@ -95,10 +112,33 @@ class SegmentationSystem:
             batch = (data, target)
             self.test_step(batch, batch_idx)
         print("Avg Test Loss {}".format(self.test_loss/batch_idx))
+        result = self.test_metrics.get_results()
+        print("Pix Acc {}, mIoU {}".format(result['Overall Acc'], result['Mean IoU']))
+        self.logger.add_scalar('Loss/Test', self.test_loss/batch_idx, epoch_id)
+        self.logger.add_scalar('Accuracy/Test', result['Overall Acc'], epoch_id)
+        self.logger.add_scalar('mIoU/Test', result['Mean IoU'], epoch_id)
+        return result
 
     def fit(self):
+        self.best_miou = 0
         for epoch_id in range(1, self.hparams.num_epochs+1):
             self.train_epoch(epoch_id)
-            self.test_epoch(epoch_id)
+            result = self.test_epoch(epoch_id)
+            if result['Mean IoU'] > self.best_miou:
+                self.best_miou = result['Mean IoU']
+                self.logger.add_scalar('Best_mIoU', self.best_miou, epoch_id)
+                if self.config.save_checkpoint == 'best':
+                    checkpoint_dict = dict(
+                            state_dict = self.model.state_dict(),
+                            hparams = vars(self.hparams),
+                            epoch = epoch_id,
+                            mIoU = self.best_miou
+                            )
+                    checkpoint_path = os.path.join(self.config.log_dir, 'best.tar')
+                    print("Saving best checkpoint.")
+                    torch.save(checkpoint_dict, checkpoint_path)
+            print('-'*10)
+
+        print("Best mean IoU {}".format(self.best_miou))
 
 
