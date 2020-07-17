@@ -9,6 +9,8 @@ import torchvision
 import torchvision.transforms as transforms
 
 from code.dataset.camvid import CamVid
+from code.dataset.cityscapes import Cityscapes
+from code.dataset.nyu import NYUv2
 import code.network.segmentation.deeplabv3 as deeplabv3
 import code.utils as utils
 
@@ -33,8 +35,39 @@ class SegmentationSystem:
                 utils.ext_transforms.ExtNormalize((0.5,), (0.5,)),
             ])
             train_dataset = CamVid(self.config.dataset_path, split='train', transform=train_transforms)
-            test_dataset = CamVid(self.config.dataset_path, split='test', transform=test_transforms)
+            test_dataset = CamVid(self.config.dataset_path, split=self.config.test_mode, transform=test_transforms)
 
+        if self.config.dataset == 'Nyu':
+            train_transforms = utils.ext_transforms.ExtCompose([
+                # utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtRandomCrop(128, pad_if_needed=True),
+                utils.ext_transforms.ExtRandomHorizontalFlip(),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5,), (0.5,)),
+            ])
+            test_transforms = utils.ext_transforms.ExtCompose([
+                # utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5,), (0.5,)),
+            ])
+            train_dataset = CamVid(self.config.dataset_path, split='train', transform=train_transforms)
+            test_dataset = CamVid(self.config.dataset_path, split=self.config.test_mode, transform=test_transforms)
+
+        elif self.config.dataset == 'Cityscapes':
+            train_transforms = utils.ext_transforms.ExtCompose([
+                utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtRandomCrop(128, pad_if_needed=True),
+                utils.ext_transforms.ExtRandomHorizontalFlip(),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5,), (0.5,)),
+            ])
+            test_transforms = utils.ext_transforms.ExtCompose([
+                utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5,), (0.5,)),
+            ])
+            train_dataset = Cityscapes(self.config.dataset_path, split='train', mode='fine', transform=train_transforms)
+            test_dataset = Cityscapes(self.config.dataset_path, split='test', mode='fine', transform=test_transforms)
 
         self.train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.hparams.train_batch_size, shuffle=True, num_workers=6)
         self.test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=self.hparams.test_batch_size, shuffle=False, num_workers=6)

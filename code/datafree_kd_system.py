@@ -11,9 +11,10 @@ import torchvision.transforms as transforms
 from code.dataset.camvid import CamVid
 from code.dataset.cityscapes import Cityscapes
 import code.network.segmentation.deeplabv3 as deeplabv3
+import code.network.dcgan as dcgan
 import code.utils as utils
 
-class KDSystem:
+class DatafreeKDSystem:
 
     def __init__(self, config, hparams):
 
@@ -83,6 +84,13 @@ class KDSystem:
         self.teacher = self.teacher.to(self.device)
         self.teacher.eval()
         print("Teacher checkpoint loaded successfully.")
+        generator_checkpoint = torch.load(self.config.generator_checkpoint)
+        self.hparams.nz = generator_checkpoint['hparams']['nz']
+        self.G = dcgan.DcGanGenerator(nz=generator_checkpoint['hparams']['nz'])
+        self.G.load_state_dict(generator_checkpoint['g_state_dict'])
+        self.G.to(self.device)
+        self.G.eval()
+        print("Generator model loaded successfully")
 
         if self.hparams.lr_scheduler:
             self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, self.hparams.scheduler_step, self.hparams.scheduler_gamma)
@@ -93,66 +101,50 @@ class KDSystem:
         self.logger = SummaryWriter(log_dir=self.config.log_dir)
 
 
-    def train_step(self, batch, batch_idx):
+    def train_step(self):
 
-        data, target = batch
         self.optimizer.zero_grad()
+        noise = torch.randn(self.hparams.train_batch_size, self.hparams.nz, 1, 1, device=self.device)
+        with torch.no_grad():
+            data = self.G(noise).detach()
         s_logits = self.model(data)
-        ce_loss = utils.focal_loss(s_logits, target, gamma=2, ignore_index=255)
         with torch.no_grad():
             t_logits = self.teacher(data)
         kd_loss = utils.soft_cross_entropy(s_logits, t_logits)
-        # loss = kd_loss
-        loss = ce_loss + self.hparams.kd_weight*kd_loss
+        loss = kd_loss
+        # loss = ce_loss + self.hparams.kd_weight*kd_loss
         self.train_loss += loss.item()
-        self.train_ce_loss += ce_loss.item()
         self.train_kd_loss += kd_loss.item()
         loss.backward()
         self.optimizer.step()
-        self.train_metrics.update(s_logits.max(1)[1].detach().cpu().numpy().astype('uint8'), target.detach().cpu().numpy().astype('uint8'))
 
     def test_step(self, batch, batch_idx):
 
         data, target = batch
         s_logits = self.model(data)
-        ce_loss = utils.focal_loss(s_logits, target, gamma=2, ignore_index=255)
         with torch.no_grad():
             t_logits = self.teacher(data)
         kd_loss = utils.soft_cross_entropy(s_logits, t_logits)
-        # loss = kd_loss
-        loss = ce_loss + self.hparams.kd_weight*kd_loss
+        loss = kd_loss
         self.test_loss += loss.item()
-        self.test_ce_loss += ce_loss.item()
         self.test_kd_loss += kd_loss.item()
         self.test_metrics.update(s_logits.max(1)[1].detach().cpu().numpy().astype('uint8'), target.detach().cpu().numpy().astype('uint8'))
 
     def train_epoch(self, epoch_id):
         self.model.train()
         self.train_loss = 0
-        self.train_ce_loss = 0
         self.train_kd_loss = 0
-        self.train_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=11)
-        for batch_idx, batch in enumerate(tqdm(self.train_loader, leave=False, unit='batch', ascii=True)):
-            data, target = batch
-            data, target = data.to(self.device), target.to(self.device)
-            target = target.long()
-            batch = (data, target)
-            self.train_step(batch, batch_idx)
+        for batch_idx in tqdm(range(10), leave=False, unit='batch', ascii=True):
+            self.train_step()
         self.scheduler.step()
         print("Epoch: {}".format(epoch_id))
         print("Avg Train Loss {}".format(self.train_loss/batch_idx))
-        result = self.train_metrics.get_results()
-        print("Pix Acc {}, mIoU {}".format(result['Overall Acc'], result['Mean IoU']))
         self.logger.add_scalar('Loss/Train', self.train_loss/batch_idx, epoch_id)
-        self.logger.add_scalar('CE_Loss/Train', self.train_ce_loss/batch_idx, epoch_id)
         self.logger.add_scalar('KD_Loss/Train', self.train_kd_loss/batch_idx, epoch_id)
-        self.logger.add_scalar('Accuracy/Train', result['Overall Acc'], epoch_id)
-        self.logger.add_scalar('mIoU/Train', result['Mean IoU'], epoch_id)
 
     def test_epoch(self, epoch_id):
         self.model.eval()
         self.test_loss = 0
-        self.test_ce_loss = 0
         self.test_kd_loss = 0
         self.test_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=11)
         for batch_idx, batch in enumerate(self.test_loader):
@@ -165,7 +157,6 @@ class KDSystem:
         result = self.test_metrics.get_results()
         print("Pix Acc {}, mIoU {}".format(result['Overall Acc'], result['Mean IoU']))
         self.logger.add_scalar('Loss/Test', self.test_loss/batch_idx, epoch_id)
-        self.logger.add_scalar('CE_Loss/test', self.test_ce_loss/batch_idx, epoch_id)
         self.logger.add_scalar('KD_Loss/test', self.test_kd_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Accuracy/Test', result['Overall Acc'], epoch_id)
         self.logger.add_scalar('mIoU/Test', result['Mean IoU'], epoch_id)

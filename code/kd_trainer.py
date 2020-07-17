@@ -14,7 +14,7 @@ def main():
             scheduler_step = 100,
             scheduler_gamma = 0.1,
             num_epochs = 300,
-            kd_weight = 1,
+            kd_weight = 10,
             )
 
     config = SimpleNamespace(
@@ -22,9 +22,10 @@ def main():
             dataset_path = 'data/CamVid',
             teacher = 'resnet50_pretrained',
             model = 'mobilenet',
-            log_dir = 'logs/datadriven/mobilenet/v5',
-            teacher_checkpoint = 'logs/segmentation/resnet50/v9/best.tar',
+            log_dir = 'logs/kd/datadriven/mobilenet/v3',
+            teacher_checkpoint = 'logs/segmentation/camvid/resnet50/v2/best.tar',
             save_checkpoint = 'best',
+            test_mode = 'val',
             )
 
     system = KDSystem(config, hparams)
@@ -35,9 +36,10 @@ def main():
             dataset_path = 'data/CamVid',
             teacher = 'resnet50_pretrained',
             model = 'mobilenet',
-            log_dir = 'logs/datadriven/mobilenet/v6',
-            teacher_checkpoint = 'logs/segmentation/resnet50/v9/best.tar',
+            log_dir = 'logs/kd/datadriven/mobilenet/v4',
+            teacher_checkpoint = 'logs/segmentation/camvid/resnet50/v2/best.tar',
             save_checkpoint = 'best',
+            test_mode = 'val',
             )
 
     system = KDSystem(config, hparams)
