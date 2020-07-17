@@ -5,11 +5,11 @@ from code.seg_system import SegmentationSystem
 def main():
 
     hparams = SimpleNamespace(
-            train_batch_size = 16,
-            test_batch_size = 8,
+            train_batch_size = 64,
+            test_batch_size = 16,
             momentum = 0.9,
             weight_decay = 5e-4,
-            lr = 0.1,
+            lr = 0.05,
             lr_scheduler = True,
             scheduler_step = 100,
             scheduler_gamma = 0.1,
@@ -17,52 +17,17 @@ def main():
             )
 
     config = SimpleNamespace(
-            dataset = 'CamVid',
-            dataset_path = 'data/CamVid',
+            dataset = 'Nyu',
+            dataset_path = 'data/Nyu',
             model = 'resnet50_pretrained',
-            log_dir = 'logs/segmentation/camvid/resnet50/v1',
+            log_dir = 'logs/segmentation/256/resnet50/v2',
             save_checkpoint = 'best',
-            test_mode = 'val',
+            test_mode = 'test',
             )
 
     system = SegmentationSystem(config, hparams)
     system.fit()
 
-    config = SimpleNamespace(
-            dataset = 'CamVid',
-            dataset_path = 'data/CamVid',
-            model = 'resnet50_pretrained',
-            log_dir = 'logs/segmentation/camvid/resnet50/v2',
-            save_checkpoint = 'best',
-            test_mode = 'val',
-            )
-
-    system = SegmentationSystem(config, hparams)
-    system.fit()
-
-    config = SimpleNamespace(
-            dataset = 'CamVid',
-            dataset_path = 'data/CamVid',
-            model = 'mobilenet',
-            log_dir = 'logs/segmentation/camvid/mobilenet/v1',
-            save_checkpoint = 'best',
-            test_mode = 'val',
-            )
-
-    system = SegmentationSystem(config, hparams)
-    system.fit()
-
-    config = SimpleNamespace(
-            dataset = 'CamVid',
-            dataset_path = 'data/CamVid',
-            model = 'mobilenet',
-            log_dir = 'logs/segmentation/camvid/mobilenet/v2',
-            save_checkpoint = 'best',
-            test_mode = 'val',
-            )
-
-    system = SegmentationSystem(config, hparams)
-    system.fit()
 
 def validate():
 
@@ -93,5 +58,5 @@ def validate():
 
 
 if __name__ == '__main__':
-    # main()
-    validate()
+    main()
+    # validate()
