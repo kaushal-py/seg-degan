@@ -65,3 +65,10 @@ def deeplabv3_resnet50(progress=True, num_classes=21, dropout_p=0.0, aux_loss=No
         if isinstance(m, nn.Dropout):
             m.p = dropout_p
     return model
+
+def deeplabv3_resnet101(progress=True, num_classes=21, dropout_p=0.0, aux_loss=None, **kwargs):
+    model = _segm_resnet("deeplab", backbone_name='resnet101', num_classes=num_classes, aux=aux_loss, **kwargs)
+    for m in model.modules():
+        if isinstance(m, nn.Dropout):
+            m.p = dropout_p
+    return model

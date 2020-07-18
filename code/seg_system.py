@@ -123,6 +123,10 @@ class SegmentationSystem:
             self.model = deeplabv3.deeplabv3_resnet50(num_classes=13,
                                                       dropout_p=0.5,
                                                       pretrained_backbone=True)
+        if self.config.model == 'resnet100_pretrained':
+            self.model = deeplabv3.deeplabv3_resnet101(num_classes=13,
+                                                      dropout_p=0.5,
+                                                      pretrained_backbone=True)
         if self.config.model == 'resnet50':
             self.model = deeplabv3.deeplabv3_resnet50(
                 num_classes=13, dropout_p=0.5, pretrained_backbone=False)
