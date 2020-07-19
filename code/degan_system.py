@@ -37,6 +37,27 @@ class DeGanSystem:
             train_dataset = CamVid(self.config.dataset_path, split='train', transform=train_transforms)
             test_dataset = CamVid(self.config.dataset_path, split='val', transform=test_transforms)
 
+        # NYUv2 dataset
+        if self.config.dataset == 'Nyu':
+            train_transforms = utils.ext_transforms.ExtCompose([
+                utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtRandomCrop(128, pad_if_needed=True),
+                utils.ext_transforms.ExtRandomHorizontalFlip(),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5, ), (0.5, )),
+            ])
+            test_transforms = utils.ext_transforms.ExtCompose([
+                utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5, ), (0.5, )),
+            ])
+            train_dataset = NYUv2(self.config.dataset_path,
+                                   split='train',
+                                   transform=train_transforms)
+            test_dataset = NYUv2(self.config.dataset_path,
+                                  split=self.config.test_mode,
+                                  transform=test_transforms)
+
         elif self.config.dataset == 'Cityscapes':
             train_transforms = utils.ext_transforms.ExtCompose([
                 utils.ext_transforms.ExtResize(256),
@@ -58,13 +79,19 @@ class DeGanSystem:
 
 
         if self.config.model == 'resnet50_pretrained':
-            self.model = deeplabv3.deeplabv3_resnet50(num_classes=11, dropout_p=0.5, pretrained_backbone=True)
-        if self.config.model == 'mobilenet_pretrained':
-            self.model = deeplabv3.deeplabv3_mobilenet(num_classes=11, dropout_p=0.5, pretrained_backbone=True)
+            self.model = deeplabv3.deeplabv3_resnet50(num_classes=13,
+                                                      dropout_p=0.5,
+                                                      pretrained_backbone=True)
+        if self.config.model == 'resnet100_pretrained':
+            self.model = deeplabv3.deeplabv3_resnet101(num_classes=13,
+                                                      dropout_p=0.5,
+                                                      pretrained_backbone=True)
         if self.config.model == 'resnet50':
-            self.model = deeplabv3.deeplabv3_resnet50(num_classes=11, dropout_p=0.5, pretrained_backbone=False)
+            self.model = deeplabv3.deeplabv3_resnet50(
+                num_classes=13, dropout_p=0.5, pretrained_backbone=False)
         if self.config.model == 'mobilenet':
-            self.model = deeplabv3.deeplabv3_mobilenet(num_classes=11, dropout_p=0.5, pretrained_backbone=False)
+            self.model = deeplabv3.deeplabv3_mobilenet(
+                num_classes=13, dropout_p=0.5, pretrained_backbone=False)
 
         self.device = torch.device("cuda")
         model_checkpoint = torch.load(self.hparams.model_checkpoint)
@@ -169,13 +196,6 @@ class DeGanSystem:
         total_loss.backward()
         self.optimizerG.step()
 
-    # def test_step(self, batch, batch_idx):
-
-    #     data, target = batch
-    #     logits = self.model(data)
-    #     loss = utils.focal_loss(logits, target, gamma=2, ignore_index=255)
-    #     self.test_loss += loss.item()
-    #     self.test_metrics.update(logits.max(1)[1].detach().cpu().numpy().astype('uint8'), target.detach().cpu().numpy().astype('uint8'))
 
     def train_epoch(self, epoch_id):
         self.model.train()
@@ -202,9 +222,15 @@ class DeGanSystem:
     def test_epoch(self, epoch_id):
         with torch.no_grad():
             f_data = self.G(self.fixed_noise)
-            f_data = (f_data+1)/2
-        gen_images = torchvision.utils.make_grid(f_data)
-        self.logger.add_image('Generated Images', gen_images, epoch_id)
+
+        logits = self.model(f_data).detach().cpu()
+        pred = logits.max(axis=1)[1]
+        pred_segmap = self.test_loader.dataset.decode_target(pred.numpy())
+        pred_segmap = torch.Tensor(pred_segmap).permute(0, 3, 1, 2)
+        f_data = (f_data.cpu()+1)/2
+        grid = torch.cat([f_data[:8], pred_segmap[:8]])
+        grid = torchvision.utils.make_grid(grid, nrow=8)
+        self.logger.add_image('Generated_images', grid, epoch_id)
 
     def fit(self):
         for epoch_id in range(1, self.hparams.num_epochs+1):

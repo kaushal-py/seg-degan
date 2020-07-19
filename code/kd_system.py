@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 
 from code.dataset.camvid import CamVid
 from code.dataset.cityscapes import Cityscapes
+from code.dataset.nyu import NYUv2
 import code.network.segmentation.deeplabv3 as deeplabv3
 import code.utils as utils
 
@@ -36,6 +37,27 @@ class KDSystem:
             train_dataset = CamVid(self.config.dataset_path, split='train', transform=train_transforms)
             test_dataset = CamVid(self.config.dataset_path, split=self.config.test_mode, transform=test_transforms)
 
+        # NYUv2 dataset
+        if self.config.dataset == 'Nyu':
+            train_transforms = utils.ext_transforms.ExtCompose([
+                utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtRandomCrop(128, pad_if_needed=True),
+                utils.ext_transforms.ExtRandomHorizontalFlip(),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5, ), (0.5, )),
+            ])
+            test_transforms = utils.ext_transforms.ExtCompose([
+                utils.ext_transforms.ExtResize(256),
+                utils.ext_transforms.ExtToTensor(),
+                utils.ext_transforms.ExtNormalize((0.5, ), (0.5, )),
+            ])
+            train_dataset = NYUv2(self.config.dataset_path,
+                                   split='train',
+                                   transform=train_transforms)
+            test_dataset = NYUv2(self.config.dataset_path,
+                                  split=self.config.test_mode,
+                                  transform=test_transforms)
+
         elif self.config.dataset == 'Cityscapes':
             train_transforms = utils.ext_transforms.ExtCompose([
                 utils.ext_transforms.ExtResize(256),
@@ -57,25 +79,43 @@ class KDSystem:
 
 
         if self.config.teacher == 'resnet50_pretrained':
-            self.teacher = deeplabv3.deeplabv3_resnet50(num_classes=11, dropout_p=0.5, pretrained_backbone=True)
-        if self.config.teacher == 'mobilenet_pretrained':
-            self.teacher = deeplabv3.deeplabv3_mobilenet(num_classes=11, dropout_p=0.5, pretrained_backbone=True)
+            self.teacher = deeplabv3.deeplabv3_resnet50(num_classes=13,
+                                                      dropout_p=0.5,
+                                                      pretrained_backbone=True)
+        if self.config.teacher == 'resnet100_pretrained':
+            self.teacher = deeplabv3.deeplabv3_resnet101(num_classes=13,
+                                                      dropout_p=0.5,
+                                                      pretrained_backbone=True)
         if self.config.teacher == 'resnet50':
-            self.teacher = deeplabv3.deeplabv3_resnet50(num_classes=11, dropout_p=0.5, pretrained_backbone=False)
+            self.teacher = deeplabv3.deeplabv3_resnet50(
+                num_classes=13, dropout_p=0.5, pretrained_backbone=False)
         if self.config.teacher == 'mobilenet':
-            self.teacher = deeplabv3.deeplabv3_mobilenet(num_classes=11, dropout_p=0.5, pretrained_backbone=False)
+            self.teacher = deeplabv3.deeplabv3_mobilenet(
+                num_classes=13, dropout_p=0.5, pretrained_backbone=False)
 
 
         if self.config.model == 'resnet50_pretrained':
-            self.model = deeplabv3.deeplabv3_resnet50(num_classes=11, dropout_p=0.5, pretrained_backbone=True)
-        if self.config.model == 'mobilenet_pretrained':
-            self.model = deeplabv3.deeplabv3_mobilenet(num_classes=11, dropout_p=0.5, pretrained_backbone=True)
+            self.model = deeplabv3.deeplabv3_resnet50(num_classes=13,
+                                                      dropout_p=0.5,
+                                                      pretrained_backbone=True)
+        if self.config.model == 'resnet100_pretrained':
+            self.model = deeplabv3.deeplabv3_resnet101(num_classes=13,
+                                                      dropout_p=0.5,
+                                                      pretrained_backbone=True)
         if self.config.model == 'resnet50':
-            self.model = deeplabv3.deeplabv3_resnet50(num_classes=11, dropout_p=0.5, pretrained_backbone=False)
+            self.model = deeplabv3.deeplabv3_resnet50(
+                num_classes=13, dropout_p=0.5, pretrained_backbone=False)
         if self.config.model == 'mobilenet':
-            self.model = deeplabv3.deeplabv3_mobilenet(num_classes=11, dropout_p=0.5, pretrained_backbone=False)
+            self.model = deeplabv3.deeplabv3_mobilenet(
+                num_classes=13, dropout_p=0.5, pretrained_backbone=False)
 
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay, momentum=self.hparams.momentum)
+        # Uses SGD optimizer for better performance than Adam
+        self.optimizer = torch.optim.SGD(
+            self.model.parameters(),
+            lr=self.hparams.lr,
+            weight_decay=self.hparams.weight_decay,
+            momentum=self.hparams.momentum)
+
         self.device = torch.device("cuda")
         self.model = self.model.to(self.device)
         teacher_checkpoint = torch.load(self.config.teacher_checkpoint)
@@ -171,25 +211,42 @@ class KDSystem:
         self.logger.add_scalar('mIoU/Test', result['Mean IoU'], epoch_id)
         return result
 
+    def log_qualitative(self, epoch):
+
+        batch = next(iter(self.test_loader))
+        data, target = batch
+        data = data.to(self.device)
+        target = target.cpu()
+        logits = self.model(data).detach().cpu()
+        pred = logits.max(axis=1)[1]
+        pred_segmap = self.test_loader.dataset.decode_target(pred.numpy())
+        pred_segmap = torch.Tensor(pred_segmap).permute(0, 3, 1, 2)
+        target_segmap = self.test_loader.dataset.decode_target(target.numpy())
+        target_segmap = torch.Tensor(target_segmap).permute(0, 3, 1, 2)
+        data = (data.cpu()+1)/2
+        grid = torch.cat([data[:8], target_segmap[:8], pred_segmap[:8]])
+        grid = torchvision.utils.make_grid(grid, nrow=8)
+        self.logger.add_image('Predictions', grid, epoch)
+
     def fit(self):
         self.best_miou = 0
-        for epoch_id in range(1, self.hparams.num_epochs+1):
+        for epoch_id in range(1, self.hparams.num_epochs + 1):
             self.train_epoch(epoch_id)
             result = self.test_epoch(epoch_id)
             if result['Mean IoU'] > self.best_miou:
                 self.best_miou = result['Mean IoU']
                 self.logger.add_scalar('Best_mIoU', self.best_miou, epoch_id)
+                self.log_qualitative(epoch_id)
                 if self.config.save_checkpoint == 'best':
-                    checkpoint_dict = dict(
-                            state_dict = self.model.state_dict(),
-                            hparams = vars(self.hparams),
-                            epoch = epoch_id,
-                            mIoU = self.best_miou
-                            )
-                    checkpoint_path = os.path.join(self.config.log_dir, 'best.tar')
+                    checkpoint_dict = dict(state_dict=self.model.state_dict(),
+                                           hparams=vars(self.hparams),
+                                           epoch=epoch_id,
+                                           mIoU=self.best_miou)
+                    checkpoint_path = os.path.join(self.config.log_dir,
+                                                   'best.tar')
                     print("Saving best checkpoint.")
                     torch.save(checkpoint_dict, checkpoint_path)
-            print('-'*10)
+            print('-' * 10)
 
         self.logger.add_hparams(vars(self.hparams), {"mIoU": self.best_miou})
         print("Best mean IoU {}".format(self.best_miou))

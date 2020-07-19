@@ -55,9 +55,10 @@ class NYUv2(data.Dataset):
                  split='train',
                  num_classes=13,
                  transform=None,
-                 ds_type='labeled'):
+                 ds_type='labeled',
+                 split_ratio = 0.1):
 
-        assert(split in ('train', 'test'))
+        assert(split in ('train', 'val', 'test'))
         assert(ds_type in ('labeled', 'unlabeled'))
         self.root = root
         self.split = split
@@ -70,7 +71,19 @@ class NYUv2(data.Dataset):
             split_mat = loadmat(os.path.join(
                 self.root, 'nyuv2-meta-data', 'splits.mat'))
 
-            idxs = split_mat[self.split+'Ndxs'].reshape(-1)
+            if self.split == 'test':
+                idxs = split_mat['testNdxs'].reshape(-1)
+            else:
+                idxs = split_mat['trainNdxs'].reshape(-1)
+
+
+            if self.split == 'val':
+                idxs = idxs[:int(split_ratio*len(idxs))]
+            elif self.split == 'train':
+                idxs = idxs[int(split_ratio*len(idxs)):]
+
+            if self.split == 'val':
+                self.split = 'train'
 
             self.images = [os.path.join(self.root, '%s' % self.split, 'nyu_rgb_%04d.png' % (idx))
                            for idx in idxs]
