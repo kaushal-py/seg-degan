@@ -33,7 +33,7 @@ def validate():
 
     hparams = SimpleNamespace(
             train_batch_size = 64,
-            test_batch_size = 16,
+            test_batch_size = 8,
             momentum = 0.9,
             weight_decay = 5e-4,
             lr = 0.05,
@@ -53,10 +53,10 @@ def validate():
             )
 
     system = SegmentationSystem(config, hparams)
-    system.load_from_checkpint('logs/segmentation/256/mobilenet/v1/best.tar')
+    system.load_from_checkpint('logs/kd/datadriven/mobilenet/v1/best.tar')
     system.test_epoch(0)
 
 
 if __name__ == '__main__':
-    main()
-    # validate()
+    # main()
+    validate()

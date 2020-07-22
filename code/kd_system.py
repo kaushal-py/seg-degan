@@ -171,7 +171,7 @@ class KDSystem:
         self.train_loss = 0
         self.train_ce_loss = 0
         self.train_kd_loss = 0
-        self.train_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=11)
+        self.train_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=13)
         for batch_idx, batch in enumerate(tqdm(self.train_loader, leave=False, unit='batch', ascii=True)):
             data, target = batch
             data, target = data.to(self.device), target.to(self.device)
@@ -194,7 +194,7 @@ class KDSystem:
         self.test_loss = 0
         self.test_ce_loss = 0
         self.test_kd_loss = 0
-        self.test_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=11)
+        self.test_metrics = utils.stream_metrics.StreamSegMetrics(n_classes=13)
         for batch_idx, batch in enumerate(self.test_loader):
             data, target = batch
             data, target = data.to(self.device), target.to(self.device)

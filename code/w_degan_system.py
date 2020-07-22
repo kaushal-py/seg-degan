@@ -4,6 +4,7 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import torchvision.transforms as transforms
@@ -12,7 +13,7 @@ from code.dataset.camvid import CamVid
 from code.dataset.cityscapes import Cityscapes
 from code.dataset.nyu import NYUv2
 import code.network.segmentation.deeplabv3 as deeplabv3
-import code.network.dcgan as dcgan
+import code.network.wgan as wgan
 import code.utils as utils
 
 
@@ -118,72 +119,108 @@ class DeGanSystem:
         self.model = self.model.to(self.device)
         self.model.eval()
 
-        self.G = dcgan.DcGanGenerator(self.hparams.nz)
-        self.D = dcgan.DcGanDiscriminator()
+        self.G = wgan.DCGAN_G(self.hparams.img_size, self.hparams.nz, nc=3, ngf=64, ngpu=1)
+        self.D = wgan.DCGAN_D(self.hparams.img_size, self.hparams.nz, nc=3, ndf=64, ngpu=1)
         self.G = self.G.to(self.device)
         self.D = self.D.to(self.device)
         self.G.apply(self.weights_init)
         self.D.apply(self.weights_init)
 
-        self.criterion = nn.BCEWithLogitsLoss()
         self.fixed_noise = torch.randn(self.hparams.train_batch_size,
                                        self.hparams.nz,
                                        1,
                                        1,
                                        device=self.device)
-        self.real_batch = torch.full((self.hparams.train_batch_size, ),
-                                     1,
-                                     device=self.device)
-        self.fake_batch = torch.full((self.hparams.train_batch_size, ),
-                                     0,
-                                     device=self.device)
+        self.one = torch.FloatTensor([1]).to(self.device)
+        self.m_one = torch.FloatTensor([-1]).to(self.device)
+        self.gen_iterations = 0
         self.diversity_gt = torch.ones(
             self.config.num_classes,
             device=self.device) / self.config.num_classes
 
-        self.optimizerD = torch.optim.Adam(self.D.parameters(),
-                                           lr=self.hparams.lr,
-                                           betas=(0.5, 0.999))
-        self.optimizerG = torch.optim.Adam(self.G.parameters(),
-                                           lr=self.hparams.lr,
-                                           betas=(0.5, 0.999))
+        # self.optimizerD = torch.optim.Adam(self.D.parameters(),
+        #                                    lr=self.hparams.lr,
+        #                                    betas=(0.5, 0.999))
+        # self.optimizerG = torch.optim.Adam(self.G.parameters(),
+        #                                    lr=self.hparams.lr,
+        #                                    betas=(0.5, 0.999))
+        self.optimizerD = torch.optim.RMSprop(self.D.parameters(), lr=self.hparams.lr)
+        self.optimizerG = torch.optim.RMSprop(self.G.parameters(), lr=self.hparams.lr)
 
         if os.path.exists(self.config.log_dir):
             raise Exception("Log directory exists")
         self.logger = SummaryWriter(log_dir=self.config.log_dir)
 
-    def train_step(self, batch, batch_idx):
+    def train_step(self):
 
-        r_data, target = batch
+        data_iter = iter(self.train_loader)
 
-        ## Train Discriminator ##
-        self.D.zero_grad()
-        r_output = self.D(r_data).view(-1)
-        errD_real = self.criterion(r_output, self.real_batch)
-        errD_real.backward()
-        self.D_x += torch.sigmoid(r_output).mean().item()
+        # Update D Network
+        # ================
+        for p in self.D.parameters():
+            p.requires_grad = True
 
-        noise = torch.randn(self.hparams.train_batch_size,
-                            self.hparams.nz,
-                            1,
-                            1,
-                            device=self.device)
-        f_data = self.G(noise)
-        f_output = self.D(f_data.detach()).view(-1)
-        errD_fake = self.criterion(f_output, self.fake_batch)
-        errD_fake.backward()
-        self.D_G_z += torch.sigmoid(f_output).mean().item()
-        self.disc_loss += errD_real.item() + errD_fake.item()
-        self.optimizerD.step()
+        if self.gen_iterations < 25 or self.gen_iterations % 500 == 0:
+            Diters = 100
+        else:
+            Diters = 5
 
-        ## Train Generator ##
+        j=0
+        while j<Diters:
+            j+=1
+
+            # Clamp parameters to a cube
+            for p in self.D.parameters():
+                p.data.clamp_(-0.01, 0.01)
+
+            try:
+                batch = data_iter.next()
+            except StopIteration:
+                data_iter = iter(self.train_loader)
+                batch = data_iter.next()
+
+            data, _ = batch
+            data = data.to(self.device)
+            self.batch_idx += 1
+
+            self.D.zero_grad()
+            inputv = Variable(data)
+
+            errD_real = self.D(inputv)
+            errD_real.backward(self.one)
+            noise = torch.randn(self.hparams.train_batch_size,
+                                       self.hparams.nz,
+                                       1,
+                                       1,
+                                       device=self.device)
+            with torch.no_grad():
+                fake = Variable(self.G(noise).data)
+            inputv = fake
+            errD_fake = self.D(inputv)
+            errD_fake.backward(self.m_one)
+            self.loss_D += errD_real.item() - errD_fake.item()
+            self.optimizerD.step()
+
+        # Update G network
+        # ================
+        for p in self.D.parameters():
+            p.requires_grad = False # to avoid computation
         self.G.zero_grad()
-        f_output = self.D(f_data).view(-1)
-        errG = self.criterion(f_output, self.real_batch)
-        self.gen_loss += errG.item()
+        noise = torch.randn(self.hparams.train_batch_size,
+                                   self.hparams.nz,
+                                   1,
+                                   1,
+                                   device=self.device)
+        noisev = Variable(noise)
+        fake = self.G(noisev)
+        errG = self.D(fake)
+        errG.backward(self.one, retain_graph=True)
+        # self.optimizerG.step()
+        self.gen_iterations += 1
+
 
         ## DeGAN Losses ##
-        c_output = self.model(f_data)
+        c_output = self.model(fake)
         c_softmax = F.softmax(c_output, dim=1)
 
         ## Entropy Loss ##
@@ -232,36 +269,24 @@ class DeGanSystem:
 
         self.div_loss += diversity_loss.item()
         self.ent_loss += entropy_loss.item()
-        total_loss = errG + self.hparams.diversity_weight * diversity_loss + self.hparams.entropy_weight * entropy_loss
-        total_loss.backward()
+        ent_div_loss = self.hparams.diversity_weight * diversity_loss + self.hparams.entropy_weight * entropy_loss
+        ent_div_loss.backward()
         self.optimizerG.step()
 
     def train_epoch(self, epoch_id):
         self.model.train()
-        self.D_x = 0
-        self.D_G_z = 0
-        self.disc_loss = 0
-        self.gen_loss = 0
+        self.loss_D = 0
         self.ent_loss = 0
         self.div_loss = 0
-        for batch_idx, batch in enumerate(
-                tqdm(self.train_loader, leave=False, unit='batch',
-                     ascii=True)):
-            data, target = batch
-            data, target = data.to(self.device), target.to(self.device)
-            target = target.long()
-            batch = (data, target)
-            self.train_step(batch, batch_idx)
+        self.batch_idx = 0
+        # for _ in range(25):
+        self.train_step()
+
         print("Epoch: {}".format(epoch_id))
-        self.logger.add_scalar('D_x', self.D_x / batch_idx, epoch_id)
-        self.logger.add_scalar('D_G_z', self.D_G_z / batch_idx, epoch_id)
-        self.logger.add_scalar('Discriminator_loss',
-                               self.disc_loss / batch_idx, epoch_id)
-        self.logger.add_scalar('Generator_loss', self.gen_loss / batch_idx,
+        self.logger.add_scalar('Wasserstein_distance', -self.loss_D / self.batch_idx, epoch_id)
+        self.logger.add_scalar('Entropy_loss', self.ent_loss,
                                epoch_id)
-        self.logger.add_scalar('Entropy_loss', self.ent_loss / batch_idx,
-                               epoch_id)
-        self.logger.add_scalar('Diversity_loss', self.div_loss / batch_idx,
+        self.logger.add_scalar('Diversity_loss', self.div_loss,
                                epoch_id)
 
     def test_epoch(self, epoch_id):
@@ -291,7 +316,7 @@ class DeGanSystem:
                 checkpoint_path = os.path.join(self.config.log_dir,
                                                'epoch_{}.tar'.format(epoch_id))
                 print("Saving checkpoint.")
-                torch.save(checkpoint_dict, checkpoint_path)
+                # torch.save(checkpoint_dict, checkpoint_path)
 
         self.logger.add_hparams(vars(self.hparams), {})
 

@@ -1,15 +1,14 @@
 from types import SimpleNamespace
 from code.datafree_kd_system import DatafreeKDSystem
 
-
 def main():
 
     hparams = SimpleNamespace(
-            train_batch_size = 16,
+            train_batch_size = 64,
             test_batch_size = 16,
             momentum = 0.9,
             weight_decay = 5e-4,
-            lr = 0.1,
+            lr = 0.05,
             lr_scheduler = True,
             scheduler_step = 100,
             scheduler_gamma = 0.1,
@@ -17,15 +16,15 @@ def main():
             kd_weight = 1,
             )
 
-    for version in range(3):
+    for i in range(5):
         config = SimpleNamespace(
-                dataset = 'CamVid',
-                dataset_path = 'data/CamVid',
+                dataset = 'Nyu',
+                dataset_path = 'data/Nyu',
                 teacher = 'resnet50_pretrained',
                 model = 'mobilenet',
-                log_dir = 'logs/kd/datafree/mobilenet/v'+str(version+16),
-                teacher_checkpoint = 'logs/segmentation/camvid/resnet50/v2/best.tar',
-                generator_checkpoint = 'logs/gan/camvid/v1/epoch_500.tar',
+                log_dir = 'logs/kd/datafree/mobilenet/v'+str(i+11),
+                teacher_checkpoint = 'logs/segmentation/256/resnet50/v1/best.tar',
+                generator_checkpoint = 'logs/gan/nyu/v'+str(i+7)+'/epoch_500.tar',
                 save_checkpoint = 'best',
                 test_mode = 'val',
                 )
