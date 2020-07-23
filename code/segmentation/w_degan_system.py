@@ -316,7 +316,7 @@ class DeGanSystem:
                 checkpoint_path = os.path.join(self.config.log_dir,
                                                'epoch_{}.tar'.format(epoch_id))
                 print("Saving checkpoint.")
-                # torch.save(checkpoint_dict, checkpoint_path)
+                torch.save(checkpoint_dict, checkpoint_path)
 
         self.logger.add_hparams(vars(self.hparams), {})
 

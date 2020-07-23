@@ -4,7 +4,7 @@ from code.w_degan_system import DeGanSystem
 def main():
 
     hparams = SimpleNamespace(
-            train_batch_size = 16,
+            train_batch_size = 64,
             test_batch_size = 16,
             lr = 0.00005,
             num_epochs = 20000,
@@ -20,11 +20,11 @@ def main():
             dataset = 'Nyu',
             dataset_path = 'data/Nyu',
             model = 'resnet50_pretrained',
-            log_dir = 'logs/wgan/nyu/test3',
+            log_dir = 'logs/wgan/nyu/v1',
             save_checkpoint = 'best',
             test_mode = 'val',
             num_classes = 13,
-            checkpoint_interval = 10,
+            checkpoint_interval = 5000,
             )
 
     system = DeGanSystem(config, hparams)
