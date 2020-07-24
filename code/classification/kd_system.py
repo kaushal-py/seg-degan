@@ -11,13 +11,22 @@ import torchvision.transforms as transforms
 import code.network.alexnet as alexnet
 
 
-class Cifar10System:
+class KDSystem:
     def __init__(self, config, hparams):
 
         self.config = config
         self.hparams = hparams
         np.random.seed(42)
         torch.manual_seed(42)
+
+        if self.config.teacher == 'alexnet':
+            self.teacher = alexnet.AlexNet(num_classes=10)
+        if self.config.teacher == 'alexnet_half':
+            self.teacher = alexnet.AlexNet_half(num_classes=10)
+
+        teacher_checkpoint = torch.load(self.hparams.teacher_checkpoint)
+        self.teacher.load_state_dict(teacher_checkpoint['state_dict'])
+        self.teacher.eval()
 
         if self.config.model == 'alexnet':
             self.model = alexnet.AlexNet(num_classes=10)
@@ -26,6 +35,7 @@ class Cifar10System:
 
         self.device = torch.device('cuda')
         self.model = self.model.to(self.device)
+        self.teacher = self.teacher.to(self.device)
 
         train_transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -102,13 +112,20 @@ class Cifar10System:
 
         data, target = batch
         self.optimizer.zero_grad()
-        logits = self.model(data)
-        loss = F.cross_entropy(logits, target)
+        logits_s = self.model(data)
+        with torch.no_grad():
+            logits_t = self.teacher(data).detach()
+        ce_loss = F.cross_entropy(logits_s, target)
+        T = self.hparams.temperature
+        kd_loss = F.kl_div(F.log_softmax(logits_s/T, dim=1), F.softmax(logits_t/T, dim=1))
+        loss = kd_loss * self.hparams.alpha * T * T + (1.0-self.hparams.alpha) * ce_loss
         loss.backward()
-        pred = logits.max(axis=1)[1]
+        pred = logits_s.max(axis=1)[1]
         self.correct += torch.sum(pred == target).item()
         self.total += data.shape[0]
         self.train_loss += loss.item()
+        self.train_kd_loss += kd_loss.item()
+        self.train_ce_loss += ce_loss.item()
         self.optimizer.step()
         # self.scheduler.step()
 
@@ -129,12 +146,16 @@ class Cifar10System:
         self.correct = 0
         self.total = 0
         self.train_loss = 0
+        self.train_kd_loss = 0
+        self.train_ce_loss = 0
         for batch_idx, batch in enumerate(self.train_loader):
             data, target = batch
             data, target = data.to(self.device), target.to(self.device)
             batch = (data, target)
             self.train_step(batch, batch_idx)
         self.logger.add_scalar('Loss/Train', self.train_loss/batch_idx, epoch_id)
+        self.logger.add_scalar('Loss/KD', self.train_kd_loss/batch_idx, epoch_id)
+        self.logger.add_scalar('Loss/CE', self.train_ce_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Accuracy/Train', self.correct/self.total, epoch_id)
         self.scheduler.step()
 

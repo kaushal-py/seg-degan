@@ -5,8 +5,10 @@ def main():
 
     hparams = SimpleNamespace(
             batch_size = 64,
-            lr = 0.001,
-            max_lr = 0.006,
+            lr = 0.1,
+            lr_gamma = 0.1,
+            lr_step_size = 80,
+            max_lr = 0.2,
             lr_scheduler = True,
             epochs = 200,
             val_split = 0.2,
@@ -14,8 +16,8 @@ def main():
 
     config = SimpleNamespace(
             dataset_path = 'data/Cifar',
-            model = 'alexnet',
-            log_dir = 'logs/classification/cifar10/alexnet/v2',
+            model = 'alexnet_half',
+            log_dir = 'logs/classification/cifar10/alexnet_half/v2',
             )
 
     system = Cifar10System(config, hparams)

@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from code.w_degan_system import DeGanSystem
+from code.segmentation.w_degan_system import DeGanSystem
 
 def main():
 
@@ -20,7 +20,7 @@ def main():
             dataset = 'Nyu',
             dataset_path = 'data/Nyu',
             model = 'resnet50_pretrained',
-            log_dir = 'logs/wgan/nyu/v1',
+            log_dir = 'logs/wgan/nyu/v2',
             save_checkpoint = 'best',
             test_mode = 'val',
             num_classes = 13,

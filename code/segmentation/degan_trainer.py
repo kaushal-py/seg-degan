@@ -1,10 +1,10 @@
 from types import SimpleNamespace
-from code.degan_system import DeGanSystem
+from code.segmentation.degan_system import DeGanSystem
 
 def main():
 
     hparams = SimpleNamespace(
-            train_batch_size = 32,
+            train_batch_size = 64,
             test_batch_size = 16,
             lr = 0.0002,
             num_epochs = 20000,
@@ -19,7 +19,7 @@ def main():
             dataset = 'Nyu',
             dataset_path = 'data/Nyu',
             model = 'resnet50_pretrained',
-            log_dir = 'logs/gan/nyu_long/v1',
+            log_dir = 'logs/gan/nyu_long/v2',
             save_checkpoint = 'best',
             test_mode = 'val',
             num_classes = 13,
