@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from code.seg_system import SegmentationSystem
+from code.segmentation.seg_system import SegmentationSystem
 
 
 def main():
@@ -49,11 +49,11 @@ def validate():
             model = 'mobilenet',
             log_dir = 'logs/segmentation/validate',
             save_checkpoint = 'best',
-            test_mode = 'test',
+            test_mode = 'val',
             )
 
     system = SegmentationSystem(config, hparams)
-    system.load_from_checkpint('logs/kd/datadriven/mobilenet/v1/best.tar')
+    system.load_from_checkpint('logs/kd/datafree/mobilenet/v1/best.tar')
     system.test_epoch(0)
 
 

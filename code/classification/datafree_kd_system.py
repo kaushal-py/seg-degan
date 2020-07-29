@@ -9,9 +9,10 @@ import torchvision
 import torchvision.transforms as transforms
 
 import code.network.alexnet as alexnet
+import code.network.dcgan_model as dcgan_model
+import code.utils.utils as utils
 
-
-class Cifar10System:
+class DatafreeKDSystem:
     def __init__(self, config, hparams):
 
         self.config = config
@@ -19,14 +20,29 @@ class Cifar10System:
         np.random.seed(42)
         torch.manual_seed(42)
 
+        if self.config.teacher == 'alexnet':
+            self.teacher = alexnet.AlexNet(num_classes=10)
+        if self.config.teacher == 'alexnet_half':
+            self.teacher = alexnet.AlexNet_half(num_classes=10)
+
+        teacher_checkpoint = torch.load(self.hparams.teacher_checkpoint)
+        self.teacher.load_state_dict(teacher_checkpoint['state_dict'])
+        self.teacher.eval()
+
         if self.config.model == 'alexnet':
             self.model = alexnet.AlexNet(num_classes=10)
         if self.config.model == 'alexnet_half':
             self.model = alexnet.AlexNet_half(num_classes=10)
-        if self.config.model == 'resnet34':
+
+        self.G = dcgan_model.Generator(ngpu=1, nz=self.hparams.nz)
+        generator_checkpoint = torch.load(self.hparams.generator_checkpoint)
+        self.G.load_state_dict(generator_checkpoint['g_state_dict'])
+        self.G.eval()
 
         self.device = torch.device('cuda')
         self.model = self.model.to(self.device)
+        self.teacher = self.teacher.to(self.device)
+        self.G = self.G.to(self.device)
 
         train_transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -54,12 +70,12 @@ class Cifar10System:
         train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_idx)
         val_sampler = torch.utils.data.sampler.SubsetRandomSampler(val_idx)
 
-        self.train_loader = torch.utils.data.DataLoader(
-            train_dataset,
-            batch_size=self.hparams.batch_size,
-            pin_memory=True,
-            num_workers=6,
-            sampler=train_sampler)
+        # self.train_loader = torch.utils.data.DataLoader(
+        #     train_dataset,
+        #     batch_size=self.hparams.batch_size,
+        #     pin_memory=True,
+        #     num_workers=6,
+        #     sampler=train_sampler)
         self.val_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=self.hparams.batch_size,
@@ -84,34 +100,47 @@ class Cifar10System:
 
         # Learning rate scheduler
         if self.hparams.lr_scheduler:
-            self.scheduler = torch.optim.lr_scheduler.CyclicLR(
-                self.optimizer,
-                base_lr=self.hparams.lr,
-                max_lr=self.hparams.max_lr,
-                step_size_up=self.hparams.step_size_up,
-            )
-            # self.scheduler = torch.optim.lr_scheduler.StepLR(
-            #         self.optimizer,
-            #         step_size=self.hparams.lr_step_size,
-            #         gamma=self.hparams.lr_gamma,
-            #         )
+            # self.scheduler = torch.optim.lr_scheduler.CyclicLR(
+            #     self.optimizer,
+            #     base_lr=self.hparams.lr,
+            #     max_lr=self.hparams.max_lr)
+            self.scheduler = torch.optim.lr_scheduler.StepLR(
+                    self.optimizer,
+                    step_size=self.hparams.lr_step_size,
+                    gamma=self.hparams.lr_gamma,
+                    )
 
         # Initialise a new logging directory and a tensorboard logger
         if os.path.exists(self.config.log_dir):
             raise Exception("Log directory exists")
         self.logger = SummaryWriter(log_dir=self.config.log_dir)
 
-    def train_step(self, batch, batch_idx):
+    def train_step(self):
 
-        data, target = batch
+        with torch.no_grad():
+            noise = torch.randn(self.hparams.batch_size,
+                                self.hparams.nz,
+                                1,
+                                1,
+                                device=self.device)
+            data = self.G(noise).detach()
         self.optimizer.zero_grad()
-        logits = self.model(data)
-        loss = F.cross_entropy(logits, target)
+        logits_s = self.model(data)
+        with torch.no_grad():
+            logits_t = self.teacher(data).detach()
+            target = logits_t.max(axis=1)[1]
+        ce_loss = utils.soft_cross_entropy(logits_s, logits_t)
+        # ce_loss = F.cross_entropy(logits_s, target)
+        T = self.hparams.temperature
+        kd_loss = F.kl_div(F.log_softmax(logits_s/T, dim=1), F.softmax(logits_t/T, dim=1))
+        loss = kd_loss * self.hparams.alpha * T * T + (1.0-self.hparams.alpha) * ce_loss
         loss.backward()
-        pred = logits.max(axis=1)[1]
+        pred = logits_s.max(axis=1)[1]
         self.correct += torch.sum(pred == target).item()
         self.total += data.shape[0]
         self.train_loss += loss.item()
+        self.train_kd_loss += kd_loss.item()
+        self.train_ce_loss += ce_loss.item()
         self.optimizer.step()
         # self.scheduler.step()
 
@@ -132,12 +161,13 @@ class Cifar10System:
         self.correct = 0
         self.total = 0
         self.train_loss = 0
-        for batch_idx, batch in enumerate(self.train_loader):
-            data, target = batch
-            data, target = data.to(self.device), target.to(self.device)
-            batch = (data, target)
-            self.train_step(batch, batch_idx)
+        self.train_kd_loss = 0
+        self.train_ce_loss = 0
+        for batch_idx in range(self.hparams.batch_length):
+            self.train_step()
         self.logger.add_scalar('Loss/Train', self.train_loss/batch_idx, epoch_id)
+        self.logger.add_scalar('Loss/KD', self.train_kd_loss/batch_idx, epoch_id)
+        self.logger.add_scalar('Loss/CE', self.train_ce_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Accuracy/Train', self.correct/self.total, epoch_id)
         self.scheduler.step()
 

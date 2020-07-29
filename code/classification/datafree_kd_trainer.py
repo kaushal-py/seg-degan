@@ -1,9 +1,11 @@
 from types import SimpleNamespace
-from code.classification.kd_system import KDSystem
+from code.classification.datafree_kd_system import DatafreeKDSystem
 
 def main():
 
-    hparams = SimpleNamespace( batch_size = 64,
+    hparams = SimpleNamespace(
+            batch_size = 64,
+            batch_length = 625,
             lr = 0.1,
             lr_gamma = 0.1,
             lr_step_size = 80,
@@ -12,18 +14,20 @@ def main():
             epochs = 200,
             val_split = 0.2,
             teacher_checkpoint = 'logs/classification/cifar10/alexnet/v16/best.tar',
-            alpha = 0.5,
-            temperature = 1,
+            generator_checkpoint = 'logs/classification/gan/cifar100_90/v1/epoch_200.tar',
+            alpha = 0.9,
+            temperature = 20,
+            nz = 100,
             )
 
     config = SimpleNamespace(
             dataset_path = 'data/Cifar',
             model = 'alexnet_half',
             teacher = 'alexnet',
-            log_dir = 'logs/classification/datdriven_kd/alexnet_half/v1',
+            log_dir = 'logs/classification/datafree_kd/alexnet_half_cifar100_90/v1',
             )
 
-    system = KDSystem(config, hparams)
+    system = DatafreeKDSystem(config, hparams)
     system.fit()
 
 def temp_tuning():
@@ -40,6 +44,7 @@ def temp_tuning():
                 teacher_checkpoint = 'logs/classification/cifar10/alexnet/v16/best.tar',
                 alpha = 0.5,
                 temperature = temp,
+                nz = 100,
                 )
 
         config = SimpleNamespace(
@@ -49,7 +54,7 @@ def temp_tuning():
                 log_dir = 'logs/classification/datdriven_kd/alexnet_half/v'+str(idx+2),
                 )
 
-        system = KDSystem(config, hparams)
+        system = DatafreeKDSystem(config, hparams)
         system.fit()
 
 def alpha_tuning():
@@ -75,10 +80,42 @@ def alpha_tuning():
                 log_dir = 'logs/classification/datdriven_kd/alexnet_half/v'+str(idx+23),
                 )
 
-        system = KDSystem(config, hparams)
+        system = DatafreeKDSystem(config, hparams)
+        system.fit()
+
+def epoch_tuning():
+
+    for idx, epoch in enumerate([20, 40, 60, 80, 100, 120, 140, 160, 180]):
+
+        hparams = SimpleNamespace(
+                batch_size = 64,
+                batch_length = 625,
+                lr = 0.1,
+                lr_gamma = 0.1,
+                lr_step_size = 80,
+                max_lr = 0.2,
+                lr_scheduler = True,
+                epochs = 200,
+                val_split = 0.2,
+                teacher_checkpoint = 'logs/classification/cifar10/alexnet/v16/best.tar',
+                generator_checkpoint = 'logs/classification/gan/cifar100_90/v1/epoch_'+str(epoch)+'.tar',
+                alpha = 0.9,
+                temperature = 20,
+                nz = 100,
+                )
+
+        config = SimpleNamespace(
+                dataset_path = 'data/Cifar',
+                model = 'alexnet_half',
+                teacher = 'alexnet',
+                log_dir = 'logs/classification/datafree_kd/alexnet_half_cifar100_90_epoch/v'+str(idx),
+                )
+
+        system = DatafreeKDSystem(config, hparams)
         system.fit()
 
 if __name__ == '__main__':
-    # main()
+    main()
+    # epoch_tuning()
     # temp_tuning()
-    alpha_tuning()
+    # alpha_tuning()
