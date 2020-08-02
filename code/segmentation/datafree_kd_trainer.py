@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from code.datafree_kd_system import DatafreeKDSystem
+from code.segmentation.datafree_kd_system import DatafreeKDSystem
 
 def main():
 
@@ -16,21 +16,35 @@ def main():
             kd_weight = 1,
             )
 
-    for i in range(5):
-        config = SimpleNamespace(
-                dataset = 'Nyu',
-                dataset_path = 'data/Nyu',
-                teacher = 'resnet50_pretrained',
-                model = 'mobilenet',
-                log_dir = 'logs/kd/datafree/mobilenet/v'+str(i+11),
-                teacher_checkpoint = 'logs/segmentation/256/resnet50/v1/best.tar',
-                generator_checkpoint = 'logs/gan/nyu/v'+str(i+7)+'/epoch_500.tar',
-                save_checkpoint = 'best',
-                test_mode = 'val',
-                )
+    config = SimpleNamespace(
+            dataset = 'Nyu',
+            dataset_path = 'data/Nyu',
+            teacher = 'resnet50_pretrained',
+            model = 'mobilenet',
+            log_dir = 'logs/kd/datafree/mobilenet_long/v1',
+            teacher_checkpoint = 'logs/segmentation/256/resnet50/v1/best.tar',
+            generator_checkpoint = 'logs/gan/nyu_long/v2/epoch_10000.tar',
+            save_checkpoint = 'best',
+            test_mode = 'val',
+            )
 
-        system = DatafreeKDSystem(config, hparams)
-        system.fit()
+    system = DatafreeKDSystem(config, hparams)
+    system.fit()
+
+    config = SimpleNamespace(
+            dataset = 'Nyu',
+            dataset_path = 'data/Nyu',
+            teacher = 'resnet50_pretrained',
+            model = 'mobilenet',
+            log_dir = 'logs/kd/datafree/mobilenet_long/v2',
+            teacher_checkpoint = 'logs/segmentation/256/resnet50/v1/best.tar',
+            generator_checkpoint = 'logs/gan/nyu_long/v2/epoch_5000.tar',
+            save_checkpoint = 'best',
+            test_mode = 'val',
+            )
+
+    system = DatafreeKDSystem(config, hparams)
+    system.fit()
 
 if __name__ == '__main__':
     main()

@@ -5,7 +5,7 @@ from ._deeplab import DeepLabHead, DeepLabV3
 from torchvision.models.segmentation.fcn import FCN, FCNHead
 import torch.nn as nn
 # from torchvision.models import resnet
-from code.network import resnet
+from code.network import seg_resnet as resnet
 
 def _segm_mobilenet(name, backbone_name, num_classes, aux, pretrained_backbone=True):
     backbone = MobileNetV2(pretrained=pretrained_backbone)

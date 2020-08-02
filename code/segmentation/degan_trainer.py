@@ -19,11 +19,11 @@ def main():
             dataset = 'Nyu',
             dataset_path = 'data/Nyu',
             model = 'resnet50_pretrained',
-            log_dir = 'logs/gan/nyu_long/v2',
+            log_dir = 'logs/gan/nyu_long/v3',
             save_checkpoint = 'best',
             test_mode = 'val',
             num_classes = 13,
-            checkpoint_interval = 5000,
+            checkpoint_interval = 1000,
             )
 
     system = DeGanSystem(config, hparams)

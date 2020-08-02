@@ -11,15 +11,15 @@ def main():
             diversity_weight = 5,
             diversity = 'entropy',
             nz = 100,
-            model_checkpoint = 'logs/classification/cifar10/alexnet/v16/best.tar',
+            model_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
             )
 
     config = SimpleNamespace(
             dataset = 'cifar100',
             num_classes = 10,
             dataset_path = 'data/Cifar',
-            model = 'alexnet',
-            log_dir = 'logs/classification/gan/cifar100_90/v2',
+            model = 'resnet34',
+            log_dir = 'logs/classification/gan/resnet/cifar100_90/v2',
             checkpoint_interval = 20,
             )
 
@@ -29,7 +29,7 @@ def main():
 
 def hparam_tuning():
 
-    for i, (ent, div) in enumerate([(0, 10), (10, 0), (5, 5), (10, 10), (5, 10)]):
+    for i, (ent, div) in enumerate([(0, 4), (0, 6), (0, 10), (5, 5), (1, 5)]):
         hparams = SimpleNamespace(
                 batch_size = 2048,
                 lr = 0.0002,
@@ -38,15 +38,15 @@ def hparam_tuning():
                 diversity_weight = div,
                 diversity = 'entropy',
                 nz = 100,
-                model_checkpoint = 'logs/classification/cifar10/alexnet/v16/best.tar',
+                model_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
                 )
 
         config = SimpleNamespace(
                 dataset = 'cifar100',
                 num_classes = 10,
                 dataset_path = 'data/Cifar',
-                model = 'alexnet',
-                log_dir = 'logs/classification/gan/cifar100/v'+str(i+3),
+                model = 'resnet34',
+                log_dir = 'logs/classification/gan/resnet/cifar100_90/v'+str(i+3),
                 checkpoint_interval = 50,
                 )
 
@@ -55,5 +55,5 @@ def hparam_tuning():
 
 
 if __name__ == '__main__':
-    main()
-    # hparam_tuning()
+    # main()
+    hparam_tuning()

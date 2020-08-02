@@ -3,7 +3,8 @@ from code.classification.kd_system import KDSystem
 
 def main():
 
-    hparams = SimpleNamespace( batch_size = 64,
+    hparams = SimpleNamespace(
+            batch_size = 64,
             lr = 0.1,
             lr_gamma = 0.1,
             lr_step_size = 80,
@@ -11,16 +12,16 @@ def main():
             lr_scheduler = True,
             epochs = 200,
             val_split = 0.2,
-            teacher_checkpoint = 'logs/classification/cifar10/alexnet/v16/best.tar',
-            alpha = 0.5,
-            temperature = 1,
+            teacher_checkpoint = 'logs/classification/cifar10/resnet34/v11/last.tar',
+            alpha = 0.9,
+            temperature = 4,
             )
 
     config = SimpleNamespace(
             dataset_path = 'data/Cifar',
-            model = 'alexnet_half',
-            teacher = 'alexnet',
-            log_dir = 'logs/classification/datdriven_kd/alexnet_half/v1',
+            model = 'resnet18',
+            teacher = 'resnet34',
+            log_dir = 'logs/classification/datdriven_kd/resnet18/v1',
             )
 
     system = KDSystem(config, hparams)

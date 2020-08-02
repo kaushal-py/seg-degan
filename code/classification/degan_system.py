@@ -11,6 +11,7 @@ import torchvision.transforms as transforms
 
 import code.network.dcgan_model as dcgan
 import code.network.alexnet as alexnet
+import code.network.resnet as resnet
 import code.utils as utils
 
 
@@ -26,9 +27,10 @@ class DeGanSystem:
             self.model = alexnet.AlexNet(num_classes=10)
         if self.config.model == 'alexnet_half':
             self.model = alexnet.AlexNet_half(num_classes=10)
-
-        self.device = torch.device('cuda')
-        self.model = self.model.to(self.device)
+        if self.config.model == 'resnet34':
+            self.model = resnet.ResNet34(num_classes=10)
+        if self.config.model == 'resnet18':
+            self.model = resnet.ResNet18(num_classes=10)
 
         train_transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -89,7 +91,7 @@ class DeGanSystem:
         self.D.apply(self.weights_init)
 
         self.criterion = nn.BCELoss()
-        self.fixed_noise = torch.randn(self.hparams.batch_size,
+        self.fixed_noise = torch.randn(64,
                                        self.hparams.nz,
                                        1,
                                        1,
@@ -152,7 +154,8 @@ class DeGanSystem:
         self.gen_loss += errG.item()
 
         ## DeGAN Losses ##
-        c_output = self.model(f_data)
+        with torch.no_grad():
+            c_output = self.model(f_data).detach()
         c_softmax = F.softmax(c_output, dim=1)
 
         ## Entropy Loss ##
@@ -206,13 +209,13 @@ class DeGanSystem:
         self.optimizerG.step()
 
     def train_epoch(self, epoch_id):
-        self.model.train()
         self.D_x = 0
         self.D_G_z = 0
         self.disc_loss = 0
         self.gen_loss = 0
         self.ent_loss = 0
         self.div_loss = 0
+        self.G.train()
         for batch_idx, batch in enumerate(
                 tqdm(self.train_loader, leave=False, unit='batch',
                      ascii=True)):
@@ -239,13 +242,13 @@ class DeGanSystem:
                                epoch_id)
 
     def test_epoch(self, epoch_id):
+        self.G.eval()
         with torch.no_grad():
-            f_data = self.G(self.fixed_noise)
-
-        logits = self.model(f_data).detach().cpu()
+            f_data = self.G(self.fixed_noise).detach()
+            logits = self.model(f_data).detach().cpu()
         pred = logits.max(axis=1)[1]
         f_data = (f_data.cpu() + 1) / 2
-        grid = torchvision.utils.make_grid(f_data[:64], nrow=8)
+        grid = torchvision.utils.make_grid(f_data, nrow=8)
         self.logger.add_image('Generated_images', grid, epoch_id)
         self.logger.add_histogram('Class_Distribution', pred, epoch_id)
 
