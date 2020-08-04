@@ -3,7 +3,67 @@ from code.classification.datafree_kd_system import DatafreeKDSystem
 
 def main():
 
-    for v in range(5):
+    hparams = SimpleNamespace(
+            batch_size = 128,
+            batch_length = 50000//128,
+            lr = 0,
+            max_lr = 0.2,
+            step_size_up = 50,
+            step_size_down = 150,
+            # lr = 0.001,
+            # lr_milestones = [100],
+            # lr_gamma = 0.1,
+            lr_scheduler = 'cyclic',
+            epochs = 200,
+            teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
+            generator_checkpoint = 'logs/classification/gan/resnet/cifar100_90/sravanti/netG_epoch_199.pth',
+            alpha = 1,
+            temperature = 20,
+            nz = 100,
+            )
+
+    config = SimpleNamespace(
+            dataset_path = 'data/Cifar',
+            model = 'resnet18',
+            teacher = 'resnet34',
+            log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_90/sravanti_uneven'
+            )
+
+    system = DatafreeKDSystem(config, hparams)
+    system.fit()
+
+    hparams = SimpleNamespace(
+            batch_size = 128,
+            batch_length = 50000//128,
+            lr = 0,
+            max_lr = 0.2,
+            step_size_up = 50,
+            step_size_down = 150,
+            # lr = 0.001,
+            # lr_milestones = [100],
+            # lr_gamma = 0.1,
+            lr_scheduler = 'cyclic',
+            epochs = 200,
+            teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
+            generator_checkpoint = 'logs/classification/gan/resnet/cifar100_90/sravanti_degan/netG_epoch_199.pth',
+            alpha = 1,
+            temperature = 20,
+            nz = 100,
+            )
+
+    config = SimpleNamespace(
+            dataset_path = 'data/Cifar',
+            model = 'resnet18',
+            teacher = 'resnet34',
+            log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_90/sravanti_uneven_degan'
+            )
+
+    system = DatafreeKDSystem(config, hparams)
+    system.fit()
+
+def multiple_run():
+
+    for version in (8, 13):
         hparams = SimpleNamespace(
                 batch_size = 128,
                 batch_length = 50000//128,
@@ -13,7 +73,7 @@ def main():
                 lr_scheduler = 'cyclic',
                 epochs = 200,
                 teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
-                generator_checkpoint = 'logs/classification/gan/resnet/cifar100_90/v'+str(v+3)+'/epoch_200.tar',
+                generator_checkpoint = 'logs/classification/gan/resnet/cifar100_90/v'+str(version)+'/epoch_200.tar',
                 alpha = 1,
                 temperature = 20,
                 nz = 100,
@@ -23,7 +83,7 @@ def main():
                 dataset_path = 'data/Cifar',
                 model = 'resnet18',
                 teacher = 'resnet34',
-                log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_90/v'+str(v+3),
+                log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_90/v'+str(version),
                 )
 
         system = DatafreeKDSystem(config, hparams)

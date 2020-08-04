@@ -4,24 +4,22 @@ from code.classification.kd_system import KDSystem
 def main():
 
     hparams = SimpleNamespace(
-            batch_size = 64,
-            lr = 0.1,
-            lr_gamma = 0.1,
-            lr_step_size = 80,
+            batch_size = 128,
+            lr = 0,
             max_lr = 0.2,
-            lr_scheduler = True,
+            step_size_up = 100,
+            lr_scheduler = 'cyclic',
             epochs = 200,
-            val_split = 0.2,
-            teacher_checkpoint = 'logs/classification/cifar10/resnet34/v11/last.tar',
-            alpha = 0.9,
-            temperature = 4,
+            teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
+            alpha = 1,
+            temperature = 20,
             )
 
     config = SimpleNamespace(
             dataset_path = 'data/Cifar',
             model = 'resnet18',
             teacher = 'resnet34',
-            log_dir = 'logs/classification/datdriven_kd/resnet18/v1',
+            log_dir = 'logs/classification/datdriven_kd/resnet18/cifar100',
             )
 
     system = KDSystem(config, hparams)
@@ -80,6 +78,6 @@ def alpha_tuning():
         system.fit()
 
 if __name__ == '__main__':
-    # main()
+    main()
     # temp_tuning()
-    alpha_tuning()
+    # alpha_tuning()

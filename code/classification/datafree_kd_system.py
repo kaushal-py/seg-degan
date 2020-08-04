@@ -45,7 +45,8 @@ class DatafreeKDSystem:
 
         self.G = dcgan_model.Generator(ngpu=1, nz=self.hparams.nz)
         generator_checkpoint = torch.load(self.hparams.generator_checkpoint)
-        self.G.load_state_dict(generator_checkpoint['g_state_dict'])
+        # self.G.load_state_dict(generator_checkpoint['g_state_dict'])
+        self.G.load_state_dict(generator_checkpoint)
         self.G.eval()
 
         self.device = torch.device('cuda')
@@ -60,8 +61,7 @@ class DatafreeKDSystem:
         ])
         test_transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, ), (0.5, )),
-        ])
+            transforms.Normalize((0.5, ), (0.5, )), ])
         train_dataset = torchvision.datasets.CIFAR10(root=self.config.dataset_path,
                                                      train=True,
                                                      transform=train_transform,
@@ -101,6 +101,7 @@ class DatafreeKDSystem:
                 base_lr=self.hparams.lr,
                 max_lr=self.hparams.max_lr,
                 step_size_up=self.hparams.step_size_up,
+                step_size_down = self.hparams.step_size_down,
             )
         elif self.hparams.lr_scheduler == 'step':
             # self.scheduler = torch.optim.lr_scheduler.StepLR(
@@ -159,7 +160,7 @@ class DatafreeKDSystem:
         self.total += data.shape[0]
         self.test_loss += loss.item()
 
-    def train_epoch(self, epoch_id):
+    def train_epoch(self, epoch_id, step=True):
 
         self.model.train()
         self.correct = 0
@@ -173,7 +174,8 @@ class DatafreeKDSystem:
         self.logger.add_scalar('Loss/KD', self.train_kd_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Loss/CE', self.train_ce_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Accuracy/Train', self.correct/self.total, epoch_id)
-        self.scheduler.step()
+        if step:
+            self.scheduler.step()
 
     def test_epoch(self, epoch_id, split='Validation'):
 
@@ -200,7 +202,7 @@ class DatafreeKDSystem:
 
         self.best_val_acc = 0
         for epoch_id in range(1, self.hparams.epochs+1):
-            self.train_epoch(epoch_id)
+            self.train_epoch(epoch_id, step=True)
             # acc = self.test_epoch(epoch_id, split='Validation')
             test_acc = self.test_epoch(epoch_id, split='Test')
             print("Epoch {}: Test accuracy: {}".format(epoch_id, test_acc))
@@ -220,6 +222,12 @@ class DatafreeKDSystem:
             #     print("Saving best checkpoint.")
             #     torch.save(checkpoint_dict, checkpoint_path)
         # print("Best Accuracy: ", self.best_val_acc)
+        
+        # for epoch_id in range(self.hparams.epochs+1, self.hparams.epochs+21):
+        #     self.train_epoch(epoch_id, step=False)
+        #     test_acc = self.test_epoch(epoch_id, split='Test')
+        #     print("Epoch {}: Test accuracy: {}".format(epoch_id, test_acc))
+
         checkpoint_dict = dict(
             hparams = vars(self.hparams),
             config = vars(self.config),
