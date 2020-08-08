@@ -1,4 +1,5 @@
 # Repository specific ignores
+.fuse*
 logs/
 data/
 results/
