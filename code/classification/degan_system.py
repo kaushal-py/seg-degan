@@ -106,10 +106,15 @@ class DeGanSystem:
             self.config.num_classes,
             device=self.device) / self.config.num_classes
 
+        # half cifar10
+        # self.exclude_classes = [0, 1, 2, 3, 4]
         # Used classes of CIFAR100 (Background classes used here)
-        self.inc_classes = [68, 23, 33, 49, 60, 71]
+        # self.inc_classes = [68, 23, 33, 49, 60, 71]
+        # Household classes 
+        self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
+        # self.inc_classes = [54, 62, 70, 82, 92, 9, 10, 16, 28, 61, 0, 51, 53, 57, 83, 22, 39, 40, 86, 87, 5, 20, 25, 84, 94, 47, 52, 56, 59, 96, 12, 17, 37, 68, 76, 23, 33, 49, 60, 71]
         # Exclude classes from vehicles1 and vehicles2
-        self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
+        # self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
 
         self.optimizerD = torch.optim.Adam(self.D.parameters(),
                                            lr=self.hparams.lr,
@@ -221,9 +226,8 @@ class DeGanSystem:
                      ascii=True)):
             data, target = batch
 
-            if self.config.dataset == 'cifar100':
-                # data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
-                data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
+            data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
+            # data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
 
             data, target = data.to(self.device), target.to(self.device)
             batch = (data, target)
@@ -275,6 +279,30 @@ class DeGanSystem:
         checkpoint = torch.load(path)
         self.G.load_state_dict(checkpoint['g_state_dict'])
         print("Model loaded succesfully")
+
+    def entropy_and_diversity(self, batches=10):
+
+        total_dist = np.zeros(10)
+        total_probs = 0
+        for batch in range(batches):
+            noise = torch.randn(1000,
+                                self.hparams.nz,
+                                1,
+                                1,
+                                device=self.device)
+            with torch.no_grad():
+                f_data = self.G(noise).detach()
+                output = self.model(f_data).detach()
+
+            c_softmax = F.softmax(output, dim=1)
+            classes = c_softmax.max(dim=1)[1].cpu().numpy()
+            probs = c_softmax.max(dim=1)[0].cpu().numpy()
+            class_dist = np.histogram(classes, bins=np.arange(11), density=True)
+            total_dist += class_dist[0]
+            total_probs += probs.mean()
+        print("Class distribution", total_dist/batches)
+        print("Entropy", total_probs/batches)
+
 
     def weights_init(self, m):
         classname = m.__class__.__name__

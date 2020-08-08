@@ -105,7 +105,14 @@ class KDSystem:
                                          weight_decay=5e-4)
 
         # self.exclude_classes = [0, 1, 2, 3, 4]
-        self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
+        # self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
+        # Household items
+        # self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
+        # flowers and fruits
+        # self.inc_classes = [54, 62, 70, 82, 92, 0, 51, 53, 57, 83]
+        # One-from-each
+        self.inc_classes = [1,4,54,9,0,22,5,6,3,12,23,15,34,26,2,27,36,47,8,41]
+        # self.inc_classes = [54, 62, 70, 82, 92, 9, 10, 16, 28, 61, 0, 51, 53, 57, 83, 22, 39, 40, 86, 87, 5, 20, 25, 84, 94, 47, 52, 56, 59, 96, 12, 17, 37, 68, 76, 23, 33, 49, 60, 71]
         # self.optimizer = torch.optim.Adam(self.model.parameters(),
         #                                  lr=self.hparams.lr,
         #                                  weight_decay=5e-4
@@ -118,6 +125,7 @@ class KDSystem:
                 base_lr=self.hparams.lr,
                 max_lr=self.hparams.max_lr,
                 step_size_up=self.hparams.step_size_up,
+                step_size_down=self.hparams.step_size_down,
             )
         elif self.hparams.lr_scheduler == 'step':
             # self.scheduler = torch.optim.lr_scheduler.StepLR(
@@ -179,7 +187,8 @@ class KDSystem:
         self.train_ce_loss = 0
         for batch_idx, batch in enumerate(self.train_loader):
             data, target = batch
-            data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
+            # data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
+            data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
             if data is None:
                 continue
 

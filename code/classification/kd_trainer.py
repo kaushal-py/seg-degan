@@ -7,7 +7,8 @@ def main():
             batch_size = 128,
             lr = 0,
             max_lr = 0.2,
-            step_size_up = 100,
+            step_size_up = 50,
+            step_size_down = 150,
             lr_scheduler = 'cyclic',
             epochs = 200,
             teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
@@ -19,8 +20,8 @@ def main():
             dataset_path = 'data/Cifar',
             model = 'resnet18',
             teacher = 'resnet34',
-            log_dir = 'logs/classification/datdriven_kd/resnet18/cifar100',
-            )
+            log_dir = 'logs/classification/datdriven_kd/resnet18/cifar100_one_from_each/v1',
+           )
 
     system = KDSystem(config, hparams)
     system.fit()

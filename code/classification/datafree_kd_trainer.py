@@ -6,7 +6,8 @@ def main():
     hparams = SimpleNamespace(
             batch_size = 128,
             batch_length = 50000//128,
-            lr = 0,
+            # batch_length = 25000//128,
+            lr = 0.0001,
             max_lr = 0.2,
             step_size_up = 50,
             step_size_down = 150,
@@ -16,7 +17,7 @@ def main():
             lr_scheduler = 'cyclic',
             epochs = 200,
             teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
-            generator_checkpoint = 'logs/classification/gan/resnet/cifar100_90/sravanti/netG_epoch_199.pth',
+            generator_checkpoint = 'logs/classification/gan/resnet/cifar10_half/v1/epoch_200.tar',
             alpha = 1,
             temperature = 20,
             nz = 100,
@@ -26,7 +27,7 @@ def main():
             dataset_path = 'data/Cifar',
             model = 'resnet18',
             teacher = 'resnet34',
-            log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_90/sravanti_uneven'
+            log_dir = 'logs/classification/datafree_kd/resnet18_cifar10_half/0_0_hypercube'
             )
 
     system = DatafreeKDSystem(config, hparams)
@@ -35,7 +36,7 @@ def main():
     hparams = SimpleNamespace(
             batch_size = 128,
             batch_length = 50000//128,
-            lr = 0,
+            lr = 0.0001,
             max_lr = 0.2,
             step_size_up = 50,
             step_size_down = 150,
@@ -45,7 +46,7 @@ def main():
             lr_scheduler = 'cyclic',
             epochs = 200,
             teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
-            generator_checkpoint = 'logs/classification/gan/resnet/cifar100_90/sravanti_degan/netG_epoch_199.pth',
+            generator_checkpoint = 'logs/classification/gan/resnet/cifar10_half/v2/epoch_200.tar',
             alpha = 1,
             temperature = 20,
             nz = 100,
@@ -55,7 +56,7 @@ def main():
             dataset_path = 'data/Cifar',
             model = 'resnet18',
             teacher = 'resnet34',
-            log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_90/sravanti_uneven_degan'
+            log_dir = 'logs/classification/datafree_kd/resnet18_cifar10_half/0_30_hypercube'
             )
 
     system = DatafreeKDSystem(config, hparams)
@@ -63,17 +64,18 @@ def main():
 
 def multiple_run():
 
-    for version in (8, 13):
+    for version in (3, 7):
         hparams = SimpleNamespace(
                 batch_size = 128,
                 batch_length = 50000//128,
-                lr = 0,
+                lr = 0.0001,
                 max_lr = 0.2,
-                step_size_up = 100,
+                step_size_up = 50,
+                step_size_down = 150,
                 lr_scheduler = 'cyclic',
                 epochs = 200,
                 teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
-                generator_checkpoint = 'logs/classification/gan/resnet/cifar100_90/v'+str(version)+'/epoch_200.tar',
+                generator_checkpoint = 'logs/classification/gan/resnet/cifar100_6/v'+str(version)+'/epoch_200.tar',
                 alpha = 1,
                 temperature = 20,
                 nz = 100,
@@ -83,7 +85,7 @@ def multiple_run():
                 dataset_path = 'data/Cifar',
                 model = 'resnet18',
                 teacher = 'resnet34',
-                log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_90/v'+str(version),
+                log_dir = 'logs/classification/datafree_kd/resnet18_cifar100_6/v'+str(version),
                 )
 
         system = DatafreeKDSystem(config, hparams)
@@ -175,6 +177,7 @@ def epoch_tuning():
 
 if __name__ == '__main__':
     main()
+    # multiple_run()
     # epoch_tuning()
     # temp_tuning()
     # alpha_tuning()
