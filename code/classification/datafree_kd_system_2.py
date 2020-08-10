@@ -10,9 +10,10 @@ import torchvision.transforms as transforms
 
 import code.network.alexnet as alexnet
 import code.network.resnet as resnet
+import code.network.dcgan_model as dcgan_model
+import code.utils.utils as utils
 
-
-class KDSystem:
+class DatafreeKDSystem:
     def __init__(self, config, hparams):
 
         self.config = config
@@ -42,81 +43,62 @@ class KDSystem:
         if self.config.model == 'resnet18':
             self.model = resnet.ResNet18(num_classes=10)
 
+        self.G = dcgan_model.Generator(ngpu=1, nz=self.hparams.nz)
+        generator_checkpoint = torch.load(self.hparams.generator_checkpoint)
+
+        # self.G.load_state_dict(generator_checkpoint['g_state_dict'])
+        self.G.load_state_dict(generator_checkpoint)
+        self.G.eval()
+
         self.device = torch.device('cuda')
         self.model = self.model.to(self.device)
         self.teacher = self.teacher.to(self.device)
+        self.G = self.G.to(self.device)
 
         train_transform = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, ), (0.5, )),
-            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
         test_transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, ), (0.5, )),
-            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        ])
-        train_dataset = torchvision.datasets.SVHN(root=self.config.dataset_path,
-                                                     split='train',
-                                                     transform=train_transform,
-                                                     download=True)
-        # train_dataset = torchvision.datasets.CIFAR100(root=self.config.dataset_path,
-        #                                              train=True,
-        #                                              transform=train_transform,
-        #                                              download=True)
+            transforms.Normalize((0.5, ), (0.5, )), ])
         # train_dataset = torchvision.datasets.CIFAR10(root=self.config.dataset_path,
         #                                              train=True,
         #                                              transform=train_transform,
         #                                              download=True)
-        test_dataset = torchvision.datasets.CIFAR10(root='data/Cifar',
+        test_dataset = torchvision.datasets.CIFAR10(root=self.config.dataset_path,
                                                     train=False,
                                                     transform=test_transform,
                                                     download=True)
 
-        # train_len = len(train_dataset)
-        # indices = list(range(train_len))
-        # np.random.shuffle(indices)
-        # split = int(self.hparams.val_split * train_len)
-        # val_idx, train_idx = indices[:split], indices[split:]
-        # train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_idx)
-        # val_sampler = torch.utils.data.sampler.SubsetRandomSampler(val_idx)
 
-        self.train_loader = torch.utils.data.DataLoader(
-            train_dataset,
-            batch_size=self.hparams.batch_size,
-            pin_memory=True,
-            num_workers=6,
-            # sampler=train_sampler
-        )
-        # self.val_loader = torch.utils.data.DataLoader(
+        # self.total_noise = torch.randn(
+        #                     self.hparams.batch_length,
+        #                     self.hparams.batch_size,
+        #                     self.hparams.nz,
+        #                     1,
+        #                     1,
+        #                     )
+
+        # self.train_loader = torch.utils.data.DataLoader(
         #     train_dataset,
         #     batch_size=self.hparams.batch_size,
         #     pin_memory=True,
         #     num_workers=6,
-        #     sampler=val_sampler)
+        #     sampler=train_sampler)
         self.test_loader = torch.utils.data.DataLoader(
             test_dataset,
             batch_size=self.hparams.batch_size,
             shuffle=False,
             pin_memory=True,
             num_workers=6)
+        # self.exclude_classes = [0, 1, 2, 3, 4]
 
         self.optimizer = torch.optim.SGD(self.model.parameters(),
                                          lr=self.hparams.lr,
                                          momentum=0.9,
                                          weight_decay=5e-4)
-
-        # self.exclude_classes = [0, 1, 2, 3, 4]
-        # self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
-        # Household items
-        # self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
-        # flowers and fruits
-        # self.inc_classes = [54, 62, 70, 82, 92, 0, 51, 53, 57, 83]
-        # One-from-each
-        self.inc_classes = [1,4,54,9,0,22,5,6,3,12,23,15,34,26,2,27,36,47,8,41]
-        # self.inc_classes = [54, 62, 70, 82, 92, 9, 10, 16, 28, 61, 0, 51, 53, 57, 83, 22, 39, 40, 86, 87, 5, 20, 25, 84, 94, 47, 52, 56, 59, 96, 12, 17, 37, 68, 76, 23, 33, 49, 60, 71]
         # self.optimizer = torch.optim.Adam(self.model.parameters(),
         #                                  lr=self.hparams.lr,
         #                                  weight_decay=5e-4
@@ -129,7 +111,7 @@ class KDSystem:
                 base_lr=self.hparams.lr,
                 max_lr=self.hparams.max_lr,
                 step_size_up=self.hparams.step_size_up,
-                step_size_down=self.hparams.step_size_down,
+                step_size_down = self.hparams.step_size_down,
             )
         elif self.hparams.lr_scheduler == 'step':
             # self.scheduler = torch.optim.lr_scheduler.StepLR(
@@ -148,25 +130,42 @@ class KDSystem:
             raise Exception("Log directory exists")
         self.logger = SummaryWriter(log_dir=self.config.log_dir)
 
-    def train_step(self, batch, batch_idx):
+    def train_step(self, batch_idx):
 
-        data, target = batch
+        with torch.no_grad():
+            # noise = self.total_noise[batch_idx].to(self.device)
+            noise = torch.randn(self.hparams.batch_size,
+                                self.hparams.nz,
+                                1,
+                                1,
+                                device=self.device)
+            # noise = torch.rand((self.hparams.batch_size,
+            #                     self.hparams.nz,
+            #                     1,
+            #                     1),
+            #                     device=self.device)
+            # noise = noise / self.hparams.cube_size
+            data = self.G(noise).detach()
+            # target = self.teacher(data).detach().max(axis=1)[1]
+            # data = torch.from_numpy(data.cpu().numpy()[~np.isin(target.cpu(), self.exclude_classes)])
+            # data = data.to(self.device)
         self.optimizer.zero_grad()
         logits_s = self.model(data)
         with torch.no_grad():
             logits_t = self.teacher(data).detach()
+            target = logits_t.max(axis=1)[1]
+        ce_loss = utils.soft_cross_entropy(logits_s, logits_t)
         # ce_loss = F.cross_entropy(logits_s, target)
         T = self.hparams.temperature
         kd_loss = F.kl_div(F.log_softmax(logits_s/T, dim=1), F.softmax(logits_t/T, dim=1))
-        loss = kd_loss * self.hparams.alpha * T * T # + (1.0-self.hparams.alpha) * ce_loss
+        loss = kd_loss * self.hparams.alpha * T * T + (1.0-self.hparams.alpha) * ce_loss
         loss.backward()
         pred = logits_s.max(axis=1)[1]
-        pred_T = logits_t.max(axis=1)[1]
-        self.correct += torch.sum(pred == pred_T).item()
+        self.correct += torch.sum(pred == target).item()
         self.total += data.shape[0]
         self.train_loss += loss.item()
         self.train_kd_loss += kd_loss.item()
-        # self.train_ce_loss += ce_loss.item()
+        self.train_ce_loss += ce_loss.item()
         self.optimizer.step()
         # self.scheduler.step()
 
@@ -181,7 +180,7 @@ class KDSystem:
         self.total += data.shape[0]
         self.test_loss += loss.item()
 
-    def train_epoch(self, epoch_id):
+    def train_epoch(self, epoch_id, step=True):
 
         self.model.train()
         self.correct = 0
@@ -189,21 +188,14 @@ class KDSystem:
         self.train_loss = 0
         self.train_kd_loss = 0
         self.train_ce_loss = 0
-        for batch_idx, batch in enumerate(self.train_loader):
-            data, target = batch
-            # data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
-            data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
-            if data is None:
-                continue
-
-            data, target = data.to(self.device), target.to(self.device)
-            batch = (data, target)
-            self.train_step(batch, batch_idx)
+        for batch_idx in range(self.hparams.batch_length):
+            self.train_step(batch_idx)
         self.logger.add_scalar('Loss/Train', self.train_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Loss/KD', self.train_kd_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Loss/CE', self.train_ce_loss/batch_idx, epoch_id)
         self.logger.add_scalar('Accuracy/Train', self.correct/self.total, epoch_id)
-        self.scheduler.step()
+        if step:
+            self.scheduler.step()
 
     def test_epoch(self, epoch_id, split='Validation'):
 
@@ -230,7 +222,7 @@ class KDSystem:
 
         self.best_val_acc = 0
         for epoch_id in range(1, self.hparams.epochs+1):
-            self.train_epoch(epoch_id)
+            self.train_epoch(epoch_id, step=True)
             # acc = self.test_epoch(epoch_id, split='Validation')
             test_acc = self.test_epoch(epoch_id, split='Test')
             print("Epoch {}: Test accuracy: {}".format(epoch_id, test_acc))
@@ -250,6 +242,12 @@ class KDSystem:
             #     print("Saving best checkpoint.")
             #     torch.save(checkpoint_dict, checkpoint_path)
         # print("Best Accuracy: ", self.best_val_acc)
+
+        # for epoch_id in range(self.hparams.epochs+1, self.hparams.epochs+21):
+        #     self.train_epoch(epoch_id, step=False)
+        #     test_acc = self.test_epoch(epoch_id, split='Test')
+        #     print("Epoch {}: Test accuracy: {}".format(epoch_id, test_acc))
+
         checkpoint_dict = dict(
             hparams = vars(self.hparams),
             config = vars(self.config),

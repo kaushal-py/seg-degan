@@ -14,7 +14,6 @@ import code.network.alexnet as alexnet
 import code.network.resnet as resnet
 import code.utils as utils
 
-
 class DeGanSystem:
     def __init__(self, config, hparams):
 
@@ -51,6 +50,11 @@ class DeGanSystem:
                                                         train=False,
                                                         transform=test_transform,
                                                         download=True)
+        if self.config.dataset == 'svhn':
+            train_dataset = torchvision.datasets.SVHN(root=self.config.dataset_path,
+                                                         split='train',
+                                                         transform=train_transform,
+                                                         download=True)
         elif self.config.dataset == 'cifar100':
             train_dataset = torchvision.datasets.CIFAR100(root=self.config.dataset_path,
                                                          train=True,
@@ -69,12 +73,12 @@ class DeGanSystem:
             num_workers=6,
             drop_last=True,
             )
-        self.test_loader = torch.utils.data.DataLoader(
-            test_dataset,
-            batch_size=self.hparams.batch_size,
-            shuffle=False,
-            pin_memory=True,
-            num_workers=6)
+        # self.test_loader = torch.utils.data.DataLoader(
+        #     test_dataset,
+        #     batch_size=self.hparams.batch_size,
+        #     shuffle=False,
+        #     pin_memory=True,
+        #     num_workers=6)
 
         self.device = torch.device("cuda")
         model_checkpoint = torch.load(self.hparams.model_checkpoint)
@@ -111,7 +115,7 @@ class DeGanSystem:
         # Used classes of CIFAR100 (Background classes used here)
         # self.inc_classes = [68, 23, 33, 49, 60, 71]
         # Household classes 
-        self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
+        # self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
         # self.inc_classes = [54, 62, 70, 82, 92, 9, 10, 16, 28, 61, 0, 51, 53, 57, 83, 22, 39, 40, 86, 87, 5, 20, 25, 84, 94, 47, 52, 56, 59, 96, 12, 17, 37, 68, 76, 23, 33, 49, 60, 71]
         # Exclude classes from vehicles1 and vehicles2
         # self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
@@ -226,7 +230,7 @@ class DeGanSystem:
                      ascii=True)):
             data, target = batch
 
-            data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
+            # data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
             # data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
 
             data, target = data.to(self.device), target.to(self.device)

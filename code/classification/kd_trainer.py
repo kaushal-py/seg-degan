@@ -17,10 +17,10 @@ def main():
             )
 
     config = SimpleNamespace(
-            dataset_path = 'data/Cifar',
+            dataset_path = 'data/Svhn',
             model = 'resnet18',
             teacher = 'resnet34',
-            log_dir = 'logs/classification/datdriven_kd/resnet18/cifar100_one_from_each/v1',
+            log_dir = 'logs/classification/datdriven_kd/resnet18/svhn/v1',
            )
 
     system = KDSystem(config, hparams)

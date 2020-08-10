@@ -45,6 +45,7 @@ class DatafreeKDSystem:
 
         self.G = dcgan_model.Generator(ngpu=1, nz=self.hparams.nz)
         generator_checkpoint = torch.load(self.hparams.generator_checkpoint)
+
         self.G.load_state_dict(generator_checkpoint['g_state_dict'])
         # self.G.load_state_dict(generator_checkpoint)
         self.G.eval()
@@ -92,7 +93,6 @@ class DatafreeKDSystem:
             shuffle=False,
             pin_memory=True,
             num_workers=6)
-        
         # self.exclude_classes = [0, 1, 2, 3, 4]
 
         self.optimizer = torch.optim.SGD(self.model.parameters(),
@@ -134,16 +134,17 @@ class DatafreeKDSystem:
 
         with torch.no_grad():
             # noise = self.total_noise[batch_idx].to(self.device)
-            # noise = torch.randn(self.hparams.batch_size,
-            #                     self.hparams.nz,
-            #                     1,
-            #                     1,
-            #                     device=self.device)
-            noise = torch.rand((self.hparams.batch_size,
+            noise = torch.randn(self.hparams.batch_size,
                                 self.hparams.nz,
                                 1,
-                                1),
+                                1,
                                 device=self.device)
+            # noise = torch.rand((self.hparams.batch_size,
+            #                     self.hparams.nz,
+            #                     1,
+            #                     1),
+            #                     device=self.device)
+            # noise = noise / self.hparams.cube_size
             data = self.G(noise).detach()
             # target = self.teacher(data).detach().max(axis=1)[1]
             # data = torch.from_numpy(data.cpu().numpy()[~np.isin(target.cpu(), self.exclude_classes)])

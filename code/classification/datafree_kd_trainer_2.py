@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from code.classification.datafree_kd_system import DatafreeKDSystem
+from code.classification.datafree_kd_system_2 import DatafreeKDSystem
 
 def main():
 
@@ -17,7 +17,7 @@ def main():
             lr_scheduler = 'cyclic',
             epochs = 200,
             teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
-            generator_checkpoint = 'logs/classification/gan/resnet/svhn/v3/epoch_200.tar',
+            generator_checkpoint = 'logs/classification/gan/resnet/synthia/sravanti/netG_epoch_199.pth',
             alpha = 1,
             temperature = 20,
             nz = 100,
@@ -28,41 +28,42 @@ def main():
             dataset_path = 'data/Cifar',
             model = 'resnet18',
             teacher = 'resnet34',
-            log_dir = 'logs/classification/datafree_kd/svhn/50_500'
+            log_dir = 'logs/classification/datafree_kd/synthia/0_0'
             )
 
     system = DatafreeKDSystem(config, hparams)
     system.fit()
 
-    # hparams = SimpleNamespace(
-    #         batch_size = 128,
-    #         batch_length = 50000//128,
-    #         lr = 0.0001,
-    #         max_lr = 0.2,
-    #         step_size_up = 50,
-    #         step_size_down = 150,
-    #         # lr = 0.001,
-    #         # lr_milestones = [100],
-    #         # lr_gamma = 0.1,
-    #         lr_scheduler = 'cyclic',
-    #         epochs = 200,
-    #         teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
-    #         generator_checkpoint = 'logs/classification/gan/resnet/svhn/v2/epoch_200.tar',
-    #         alpha = 1,
-    #         temperature = 20,
-    #         nz = 100,
-    #         # cube_size=10,
-    #         )
+    hparams = SimpleNamespace(
+            batch_size = 128,
+            batch_length = 50000//128,
+            # batch_length = 25000//128,
+            lr = 0.0001,
+            max_lr = 0.2,
+            step_size_up = 50,
+            step_size_down = 150,
+            # lr = 0.001,
+            # lr_milestones = [100],
+            # lr_gamma = 0.1,
+            lr_scheduler = 'cyclic',
+            epochs = 200,
+            teacher_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
+            generator_checkpoint = 'logs/classification/gan/resnet/synthia/sravanti_degan/netG_epoch_199.pth',
+            alpha = 1,
+            temperature = 20,
+            nz = 100,
+            # cube_size = 2,
+            )
 
-    # config = SimpleNamespace(
-    #         dataset_path = 'data/Cifar',
-    #         model = 'resnet18',
-    #         teacher = 'resnet34',
-    #         log_dir = 'logs/classification/datafree_kd/svhn/0_30'
-    #         )
+    config = SimpleNamespace(
+            dataset_path = 'data/Cifar',
+            model = 'resnet18',
+            teacher = 'resnet34',
+            log_dir = 'logs/classification/datafree_kd/synthia/0_20'
+            )
 
-    # system = DatafreeKDSystem(config, hparams)
-    # system.fit()
+    system = DatafreeKDSystem(config, hparams)
+    system.fit()
 
 def multiple_run():
 
