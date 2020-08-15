@@ -82,7 +82,8 @@ class DeGanSystem:
 
         self.device = torch.device("cuda")
         model_checkpoint = torch.load(self.hparams.model_checkpoint)
-        self.model.load_state_dict(model_checkpoint['state_dict'])
+        # self.model.load_state_dict(model_checkpoint['state_dict'])
+        self.model.load_state_dict(model_checkpoint)
         print("Teacher checkpoint loaded succesfully.")
         self.model = self.model.to(self.device)
         self.model.eval()
@@ -116,6 +117,7 @@ class DeGanSystem:
         # self.inc_classes = [68, 23, 33, 49, 60, 71]
         # Household classes 
         # self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
+        # 40 classes
         # self.inc_classes = [54, 62, 70, 82, 92, 9, 10, 16, 28, 61, 0, 51, 53, 57, 83, 22, 39, 40, 86, 87, 5, 20, 25, 84, 94, 47, 52, 56, 59, 96, 12, 17, 37, 68, 76, 23, 33, 49, 60, 71]
         # Exclude classes from vehicles1 and vehicles2
         # self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]

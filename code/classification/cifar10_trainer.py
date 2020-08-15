@@ -38,8 +38,8 @@ def main():
 
     config = SimpleNamespace(
             dataset_path = 'data/Cifar',
-            model = 'resnet34',
-            log_dir = 'logs/classification/cifar10/resnet34/v12',
+            model = 'alexnet',
+            log_dir = 'logs/classification/cifar10/alexnet/final',
             )
 
     system = Cifar10System(config, hparams)
@@ -91,7 +91,7 @@ def main():
 def validate():
 
     hparams = SimpleNamespace(
-            batch_size = 128,
+            batch_size = 100,
             # lr = 0.1,
             # lr_gamma = 0.1,
             # lr_milestones = [80, 120],
@@ -104,12 +104,12 @@ def validate():
 
     config = SimpleNamespace(
             dataset_path = 'data/Cifar',
-            model = 'resnet34',
-            log_dir = 'logs/classification/cifar10/resnet34/test/',
+            model = 'alexnet',
+            log_dir = 'logs/classification/cifar10/alexnet/test/',
             )
 
     system = Cifar10System(config, hparams)
-    system.load_from_checkpint('logs/classification/cifar10/resnet34/gaurav_model/best.tar')
+    system.load_from_checkpint('logs/classification/cifar10/alexnet/final/best_model.pth')
     test_acc = system.test_epoch(0, split='Test')
     print("Test acc = {}".format(test_acc))
 

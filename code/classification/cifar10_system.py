@@ -159,6 +159,7 @@ class Cifar10System:
     def test_epoch(self, epoch_id, split='Validation'):
 
         self.model.eval()
+        # self.model.train()
         self.correct = 0
         self.total = 0
         self.test_loss = 0
@@ -216,6 +217,7 @@ class Cifar10System:
     def load_from_checkpint(self, path):
 
         checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint['state_dict'])
+        # self.model.load_state_dict(checkpoint['state_dict'])
+        self.model.load_state_dict(checkpoint)
         # self.model = torch.load(path)
         print("Model loaded succesfully")

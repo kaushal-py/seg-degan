@@ -31,7 +31,8 @@ class DatafreeKDSystem:
             self.teacher = resnet.ResNet18(num_classes=10)
 
         teacher_checkpoint = torch.load(self.hparams.teacher_checkpoint)
-        self.teacher.load_state_dict(teacher_checkpoint['state_dict'])
+        # self.teacher.load_state_dict(teacher_checkpoint['state_dict'])
+        self.teacher.load_state_dict(teacher_checkpoint)
         self.teacher.eval()
 
         if self.config.model == 'alexnet':
@@ -263,5 +264,7 @@ class DatafreeKDSystem:
     def load_from_checkpint(self, path):
 
         checkpoint = torch.load(path)
+        print(checkpoint['hparams'])
+        print(checkpoint['config'])
         self.model.load_state_dict(checkpoint['state_dict'])
         print("Model loaded succesfully")
