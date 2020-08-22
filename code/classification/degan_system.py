@@ -116,7 +116,7 @@ class DeGanSystem:
         # Used classes of CIFAR100 (Background classes used here)
         # self.inc_classes = [68, 23, 33, 49, 60, 71]
         # Household classes 
-        # self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
+        self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
         # 40 classes
         # self.inc_classes = [54, 62, 70, 82, 92, 9, 10, 16, 28, 61, 0, 51, 53, 57, 83, 22, 39, 40, 86, 87, 5, 20, 25, 84, 94, 47, 52, 56, 59, 96, 12, 17, 37, 68, 76, 23, 33, 49, 60, 71]
         # Exclude classes from vehicles1 and vehicles2
@@ -150,6 +150,7 @@ class DeGanSystem:
                             1,
                             1,
                             device=self.device)
+
         f_data = self.G(noise)
         f_output = self.D(f_data.detach()).view(-1)
         errD_fake = self.criterion(f_output, self.fake_batch[:batch_size])
@@ -170,7 +171,7 @@ class DeGanSystem:
         c_softmax = F.softmax(c_output, dim=1)
 
         ## Entropy Loss ##
-        # Calculate entropy for each pixel
+        # Calculate entropy for each softmax vector
         entropy_F = -1 * torch.sum(c_softmax * torch.log(c_softmax + 1e-5),
                                    dim=1)
         # Get mean accross spatial dimensions
@@ -232,7 +233,9 @@ class DeGanSystem:
                      ascii=True)):
             data, target = batch
 
-            # data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
+            data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
+            if data.shape[0] == 0:
+                continue
             # data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
 
             data, target = data.to(self.device), target.to(self.device)
