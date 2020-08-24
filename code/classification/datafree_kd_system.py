@@ -260,6 +260,7 @@ class DatafreeKDSystem:
                                        'last.tar')
         print("Saving last checkpoint.")
         torch.save(checkpoint_dict, checkpoint_path)
+        self.logger.close()
 
     def load_from_checkpint(self, path):
 

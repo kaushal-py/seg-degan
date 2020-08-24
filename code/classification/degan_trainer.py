@@ -88,7 +88,7 @@ def validate():
 
 def hparam_tuning():
 
-    for i, (ent, div) in enumerate([(0, 5), (0, 20), (0, 30),]):
+    for i, (ent, div) in enumerate([(0, 50), (0, 100)]):
 
         hparams = SimpleNamespace(
                 # batch_size = batch_size,
@@ -142,32 +142,33 @@ def hparam_tuning_2():
         system.fit()
 
 def batchsize_tuning():
-    for batch_size in [64, 2048]:
-    # for batch_size in [1, 2, 3]:
-        hparams = SimpleNamespace(
-                batch_size = batch_size,
-                # batch_size = 2048,
-                lr = 0.0002,
-                num_epochs = 200,
-                entropy_weight = 0,
-                diversity_weight = 30,
-                diversity = 'entropy',
-                nz = 100,
-                # model_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
-                model_checkpoint = 'logs/classification/cifar10/alexnet/final/best_model.pth',
-                )
+    for ent, div in [(0,0), (0, 30)]:
+        for batch_size in [64, 2048]:
+        # for batch_size in [1, 2, 3]:
+            hparams = SimpleNamespace(
+                    batch_size = batch_size,
+                    # batch_size = 2048,
+                    lr = 0.0002,
+                    num_epochs = 200,
+                    entropy_weight = ent,
+                    diversity_weight = div,
+                    diversity = 'entropy',
+                    nz = 100,
+                    # model_checkpoint = 'logs/classification/cifar10/resnet34/gaurav_model/best.tar',
+                    model_checkpoint = 'logs/classification/cifar10/alexnet/final/best_model.pth',
+                    )
 
-        config = SimpleNamespace(
-                dataset = 'cifar100',
-                num_classes = 10,
-                dataset_path = 'data/Cifar',
-                model = 'alexnet',
-                log_dir = 'logs/classification/gan/alexnet/cifar100_household/degan_0_30_'+str(batch_size),
-                checkpoint_interval = 50,
-                )
+            config = SimpleNamespace(
+                    dataset = 'cifar100',
+                    num_classes = 10,
+                    dataset_path = 'data/Cifar',
+                    model = 'alexnet',
+                    log_dir = 'logs/classification/gan/alexnet/cifar100_90/gan_'+str(ent)+'_'+str(div)+'_'+str(batch_size),
+                    checkpoint_interval = 50,
+                    )
 
-        system = DeGanSystem(config, hparams)
-        system.fit()
+            system = DeGanSystem(config, hparams)
+            system.fit()
 
 if __name__ == '__main__':
     # main()
