@@ -68,9 +68,9 @@ def multiple_run():
 
     # for proxy in ['svhn', 'cifar100_40', 'cifar100_90']:
     # for gan in ['gan', 'degan_0_30']:
-    for gan in ['degan_regression']:
+    for gan in ['_2048']:
         # for gan in ['sravanti_gan', 'sravanti_degan']:
-        for run in ['0_50', '0_100']:
+        for run in ['0_5', '0_10']:
         # for run in ['0_10']:
         # for run in [1, 2, 3]:
         # for run in [64, 2048]:
@@ -82,12 +82,15 @@ def multiple_run():
                     max_lr = 0.2,
                     step_size_up = 50,
                     step_size_down = 150,
+                    # lr_milestones = [200],
+                    # lr_gamma = 0.1,
+                    # lr = 0.001,
                     lr_scheduler = 'cyclic',
                     epochs = 200,
                     # teacher_checkpoint = 'logs/classification/cifar11/resnet34/gaurav_model/best.tar',
                     teacher_checkpoint = 'logs/classification/cifar10/alexnet/final/best_model.pth',
                     # generator_checkpoint = 'logs/classification/gan/alexnet/cifar100_household/'+gan+'_'+str(run)+'/epoch_200.tar',
-                    generator_checkpoint = 'logs/classification/gan/alexnet/svhn/'+gan+str(run)+'/epoch_200.tar',
+                    generator_checkpoint = 'logs/classification/gan/alexnet/new_cifar100_household/gan_'+run+str(gan)+'/epoch_200.tar',
                     alpha = 1,
                     temperature = 20,
                     nz = 100,
@@ -97,7 +100,7 @@ def multiple_run():
                     dataset_path = 'data/Cifar',
                     model = 'alexnet_half',
                     teacher = 'alexnet',
-                    log_dir = 'logs/classification/datafree_kd/alexnet/svhn/'+gan+'_'+str(run),
+                    log_dir = 'logs/classification/datafree_kd/alexnet/new_cifar100_household/gan_cyclic_'+run+str(gan),
                     )
 
             system = DatafreeKDSystem(config, hparams)

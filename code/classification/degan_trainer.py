@@ -142,8 +142,8 @@ def hparam_tuning_2():
         system.fit()
 
 def batchsize_tuning():
-    for ent, div in [(0,0), (0, 30)]:
-        for batch_size in [64, 2048]:
+    for ent, div in [(0,1)]:
+        for batch_size in [2048]:
         # for batch_size in [1, 2, 3]:
             hparams = SimpleNamespace(
                     batch_size = batch_size,
@@ -163,7 +163,7 @@ def batchsize_tuning():
                     num_classes = 10,
                     dataset_path = 'data/Cifar',
                     model = 'alexnet',
-                    log_dir = 'logs/classification/gan/alexnet/cifar100_90/gan_'+str(ent)+'_'+str(div)+'_'+str(batch_size),
+                    log_dir = 'logs/classification/gan/alexnet/new_cifar100_household/gan_'+str(ent)+'_'+str(div)+'_'+str(batch_size),
                     checkpoint_interval = 50,
                     )
 

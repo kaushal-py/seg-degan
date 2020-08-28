@@ -32,7 +32,7 @@ class DeGanSystem:
             self.model = resnet.ResNet18(num_classes=10)
 
         train_transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
+            # transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             transforms.Normalize((0.5, ), (0.5, )),
         ])
@@ -116,11 +116,11 @@ class DeGanSystem:
         # Used classes of CIFAR100 (Background classes used here)
         # self.inc_classes = [68, 23, 33, 49, 60, 71]
         # Household classes 
-        # self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
+        self.inc_classes = [22, 39, 40, 86, 87, 5, 20, 25, 84, 94]
         # 40 classes
         # self.inc_classes = [54, 62, 70, 82, 92, 9, 10, 16, 28, 61, 0, 51, 53, 57, 83, 22, 39, 40, 86, 87, 5, 20, 25, 84, 94, 47, 52, 56, 59, 96, 12, 17, 37, 68, 76, 23, 33, 49, 60, 71]
         # Exclude classes from vehicles1 and vehicles2
-        self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
+        # self.exclude_classes = [8, 13, 48, 41, 90, 58, 69, 81, 85, 89]
 
         self.optimizerD = torch.optim.Adam(self.D.parameters(),
                                            lr=self.hparams.lr,
@@ -166,8 +166,7 @@ class DeGanSystem:
         self.gen_loss += errG.item()
 
         ## DeGAN Losses ##
-        with torch.no_grad():
-            c_output = self.model(f_data).detach()
+        c_output = self.model(f_data)
         c_softmax = F.softmax(c_output, dim=1)
 
         ## Entropy Loss ##
@@ -233,8 +232,8 @@ class DeGanSystem:
                      ascii=True)):
             data, target = batch
 
-            # data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
-            data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
+            data = torch.from_numpy(data.numpy()[np.isin(target, self.inc_classes)])
+            # data = torch.from_numpy(data.numpy()[~np.isin(target, self.exclude_classes)])
             if data.shape[0] == 0:
                 continue
 
