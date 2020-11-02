@@ -3,6 +3,21 @@
 This repository is the official implementation of [Data-free Knowledge Distillation for Segmentation using Data-Enriching GAN
 ](https://arxiv.org/abs/2030.12345). 
 
+### Deployment pipelines
+
+![Banner](banner.png)
+
+*(Top row)* A deployment pipeline where a large model is initially
+trained on some dataset. Later for mobile deployment when the model needs to be compressed, the
+dataset needs to be accessed again causing privacy concerns. 
+
+*(Bottom row)* We present a deployment
+pipeline where no access to data is required. Instead we use a proxy dataset to generate representative
+samples to perform model compression.
+
+### Data-Enriching GAN architecture
+
+![Architecture](DeGAN.png)
 
 ## Requirements
 
