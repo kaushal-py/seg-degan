@@ -28,29 +28,20 @@ pip install pytorch-lightning==0.7.0
 pip install tensorboard
 ```
 
->📋  Describe how to set up the environment, e.g. pip/conda/docker commands, download datasets, etc...
+## Training and evaluation
 
-## TODO: Training and evaluation
-
-To train the model(s) in the paper, run this command:
+To train the DeGAN network
 
 ```train
-python train.py --input-data <path_to_data> --alpha 10 --beta 20
+python -m code.segmentation.degan_trainer
 ```
+To train the student network
 
-## TODO: Results
-
-Our model achieves the following performance on :
-
-### [Image Classification on ImageNet](https://paperswithcode.com/sota/image-classification-on-imagenet)
-
-| Model name         | Top 1 Accuracy  | Top 5 Accuracy |
-| ------------------ |---------------- | -------------- |
-| My awesome model   |     85%         |      95%       |
-
->📋  Include a table of results from your paper, and link back to the leaderboard for clarity and context. If your main result is a figure, include that figure and link to the command or notebook to reproduce it. 
+```train
+python -m code.segmentation.datafree_kd_trainer
+```
 
 
 ## Contributing
 
->📋  Pick a licence and describe how to contribute to your code repository. 
+Create a issue or a pull request if you wish to contribute :) 
