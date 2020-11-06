@@ -1,7 +1,7 @@
 # Data-free Knowledge Distillation for Segmentation using Data-Enriching GAN
 
 This repository is the official implementation of [Data-free Knowledge Distillation for Segmentation using Data-Enriching GAN
-](https://arxiv.org/abs/2030.12345). 
+](https://arxiv.org/abs/2011.00809). 
 
 ### Deployment pipelines
 
@@ -19,12 +19,13 @@ samples to perform model compression.
 
 ![Architecture](DeGAN.png)
 
-## TODO:Requirements
+## Requirements
 
 To install requirements:
 
 ```setup
-pip install -r requirements.txt
+pip install pytorch-lightning==0.7.0
+pip install tensorboard
 ```
 
 >📋  Describe how to set up the environment, e.g. pip/conda/docker commands, download datasets, etc...
